@@ -6,9 +6,9 @@ edition = "2018"
 
 [dependencies]
 failure = "0.1.5"
-futures-preview = { version = "0.3.0-alpha.16", features = ["io-compat"] }
+futures-preview = { version = "=0.3.0-alpha.16", features = ["io-compat"] }
 hyper = { version = "0.12.30", default-features = false }
-runtime = "0.3.0-alpha.4"
+runtime = "=0.3.0-alpha.4"
 
 [lib]
 path = "lib.rs"
