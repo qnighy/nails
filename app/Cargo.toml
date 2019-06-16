@@ -1,10 +1,10 @@
 [package]
-name = "sayho-bin"
+name = "sayho"
 version = "0.1.0"
 authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-sayho = { path = "app" }
 
-[workspace]
+[lib]
+path = "lib.rs"
