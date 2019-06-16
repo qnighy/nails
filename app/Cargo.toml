@@ -5,6 +5,7 @@ authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+runtime = "0.3.0-alpha.4"
 
 [lib]
 path = "lib.rs"
