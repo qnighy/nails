@@ -1,15 +1,15 @@
 #![feature(async_await)]
 
 use futures::compat::{Compat, Future01CompatExt};
-use futures::TryStreamExt;
-use hyper::service::service_fn_ok;
-use hyper::{Body, Response, Server};
+use futures::{FutureExt, TryFutureExt, TryStreamExt};
+use hyper::service::service_fn;
+use hyper::Server;
 use runtime::net::TcpListener;
 
-static TEXT: &str = "Hello, World!";
+mod routes;
 
 pub async fn server() -> failure::Fallible<()> {
-    let new_svc = || service_fn_ok(|_req| Response::new(Body::from(TEXT)));
+    let new_svc = || service_fn(|req| crate::routes::route(req).boxed().compat());
 
     let mut listener = TcpListener::bind("127.0.0.1:3000")?;
     println!("Listening on {}", listener.local_addr()?);
