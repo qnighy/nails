@@ -9,6 +9,7 @@ failure = "0.1.5"
 futures-preview = { version = "=0.3.0-alpha.16", features = ["io-compat"] }
 hyper = { version = "0.12.30", default-features = false }
 runtime = "=0.3.0-alpha.4"
+structopt = "0.2.16"
 
 [[bin]]
 name = "sayho"
