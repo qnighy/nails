@@ -8,6 +8,12 @@ use runtime::net::TcpListener;
 
 mod routes;
 
+#[runtime::main]
+async fn main() -> failure::Fallible<()> {
+    server().await?;
+    Ok(())
+}
+
 pub async fn server() -> failure::Fallible<()> {
     let new_svc = || service_fn(|req| crate::routes::route(req).boxed().compat());
 

@@ -1,12 +1,17 @@
 [package]
-name = "sayho-bin"
+name = "sayho"
 version = "0.1.0"
 authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 edition = "2018"
 
 [dependencies]
 failure = "0.1.5"
-sayho = { path = "app" }
+futures-preview = { version = "=0.3.0-alpha.16", features = ["io-compat"] }
+hyper = { version = "0.12.30", default-features = false }
 runtime = "=0.3.0-alpha.4"
+
+[[bin]]
+name = "sayho"
+path = "app/main.rs"
 
 [workspace]
