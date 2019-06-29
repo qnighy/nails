@@ -10,7 +10,7 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
     };
 
     let resp = if router.match_path(req.method(), req.uri().path()) {
-        router.respond(req)
+        router.respond(req).await
     } else {
         Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -24,6 +24,6 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
 #[nails(path = "/")]
 struct IndexRequest {}
 
-fn index(_req: IndexRequest) -> Response<Body> {
+async fn index(_req: IndexRequest) -> Response<Body> {
     Response::new(Body::from("Hello, world!"))
 }

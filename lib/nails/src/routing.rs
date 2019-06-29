@@ -1,12 +1,15 @@
+use futures::prelude::*;
+
 use std::fmt;
 use std::marker::PhantomData;
+use std::pin::Pin;
 
 use hyper::{Body, Method, Request, Response};
 
 use crate::request::FromRequest;
 
 pub struct Router {
-    routes: Vec<Box<dyn Routable + 'static>>,
+    routes: Vec<Box<dyn Routable + Send + 'static>>,
 }
 
 impl Router {
@@ -16,14 +19,15 @@ impl Router {
 
     pub fn add_route<R>(&mut self, route: R)
     where
-        R: Routable + 'static,
+        R: Routable + Send + 'static,
     {
         self.routes.push(Box::new(route));
     }
 
-    pub fn add_function_route<F, Req>(&mut self, route: F)
+    pub fn add_function_route<F, Fut, Req>(&mut self, route: F)
     where
-        F: Fn(Req) -> Response<Body> + 'static,
+        F: Fn(Req) -> Fut + Send + 'static,
+        Fut: Future<Output = Response<Body>> + Send + 'static,
         Req: FromRequest + 'static,
     {
         self.add_route(FunctionRoute::new(route))
@@ -42,7 +46,10 @@ impl Routable for Router {
             .iter()
             .any(|route| route.match_path(method, path))
     }
-    fn respond(&self, req: Request<Body>) -> Response<Body> {
+    fn respond(
+        &self,
+        req: Request<Body>,
+    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>> {
         let method = req.method();
         let path = req.uri().path();
         let mut matched_route = None;
@@ -64,9 +71,11 @@ pub trait Routable {
         ""
     }
     fn match_path(&self, method: &Method, path: &str) -> bool;
-    // TODO: async
     // TODO: Result
-    fn respond(&self, req: Request<Body>) -> Response<Body>;
+    fn respond(
+        &self,
+        req: Request<Body>,
+    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>>;
 }
 
 pub struct FunctionRoute<F, Req> {
@@ -74,9 +83,10 @@ pub struct FunctionRoute<F, Req> {
     _marker: PhantomData<fn(Req)>,
 }
 
-impl<F, Req> FunctionRoute<F, Req>
+impl<F, Fut, Req> FunctionRoute<F, Req>
 where
-    F: Fn(Req) -> Response<Body>,
+    F: Fn(Req) -> Fut,
+    Fut: Future<Output = Response<Body>> + Send + 'static,
     Req: FromRequest,
 {
     pub fn new(f: F) -> Self {
@@ -87,9 +97,10 @@ where
     }
 }
 
-impl<F, Req> Routable for FunctionRoute<F, Req>
+impl<F, Fut, Req> Routable for FunctionRoute<F, Req>
 where
-    F: Fn(Req) -> Response<Body>,
+    F: Fn(Req) -> Fut,
+    Fut: Future<Output = Response<Body>> + Send + 'static,
     Req: FromRequest,
 {
     fn path_prefix_hint(&self) -> &str {
@@ -100,8 +111,11 @@ where
         Req::match_path(method, path)
     }
 
-    fn respond(&self, req: Request<Body>) -> Response<Body> {
+    fn respond(
+        &self,
+        req: Request<Body>,
+    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>> {
         let req = FromRequest::from_request(req);
-        (self.f)(req)
+        (self.f)(req).boxed()
     }
 }
