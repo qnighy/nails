@@ -20,21 +20,9 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
     Ok(resp)
 }
 
-#[derive(Debug)]
+#[derive(Debug, FromRequest)]
+#[nails(path = "/")]
 struct IndexRequest {}
-
-impl FromRequest for IndexRequest {
-    fn path_prefix_hint() -> &'static str {
-        "/"
-    }
-    fn match_path(method: &Method, path: &str) -> bool {
-        (*method == Method::GET || *method == Method::POST) && path == "/"
-    }
-
-    fn from_request(_req: Request<Body>) -> Self {
-        IndexRequest {}
-    }
-}
 
 fn index(_req: IndexRequest) -> Response<Body> {
     Response::new(Body::from("Hello, world!"))

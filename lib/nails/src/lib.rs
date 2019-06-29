@@ -1,7 +1,11 @@
+extern crate self as nails;
+
 use std::fmt;
 use std::marker::PhantomData;
 
 use hyper::{Body, Method, Request, Response};
+
+pub use nails_derive::FromRequest;
 
 pub trait FromRequest: Sized {
     fn path_prefix_hint() -> &'static str {
@@ -47,7 +51,9 @@ impl fmt::Debug for Router {
 
 impl Routable for Router {
     fn match_path(&self, method: &Method, path: &str) -> bool {
-        self.routes.iter().any(|route| route.match_path(method, path))
+        self.routes
+            .iter()
+            .any(|route| route.match_path(method, path))
     }
     fn respond(&self, req: Request<Body>) -> Response<Body> {
         let method = req.method();
@@ -67,7 +73,9 @@ impl Routable for Router {
 }
 
 pub trait Routable {
-    fn path_prefix_hint(&self) -> &str { "" }
+    fn path_prefix_hint(&self) -> &str {
+        ""
+    }
     fn match_path(&self, method: &Method, path: &str) -> bool;
     // TODO: async
     // TODO: Result
