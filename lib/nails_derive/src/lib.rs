@@ -48,7 +48,7 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
             }
             fn match_path(method: &Method, path: &str) -> bool {
                 // TODO: configurable method kind
-                (*method == Method::GET || *method == Method::POST) && path == #path_lit
+                (*method == Method::GET || *method == Method::HEAD) && path == #path_lit
             }
 
             fn from_request(req: Request<Body>) -> Self {
@@ -61,11 +61,7 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
 
 fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
     let mut query: Option<String> = None;
-    for meta in field
-        .attrs
-        .iter()
-        .filter_map(|attr| attr.parse_meta().ok())
-    {
+    for meta in field.attrs.iter().filter_map(|attr| attr.parse_meta().ok()) {
         if meta.name() == "nails" {
             if let syn::Meta::List(ref list) = meta {
                 if let Some(ref pair) = list.nested.first() {
