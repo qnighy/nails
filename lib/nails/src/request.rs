@@ -1,5 +1,6 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::slice;
 
 use hyper::{Body, Method, Request};
 
@@ -14,6 +15,54 @@ pub trait FromRequest: Sized {
     // TODO: Result<Self>
     // TODO: Request<Body> -> RoutableRequest
     fn from_request(req: Request<Body>) -> Self;
+}
+
+pub trait FromQuery: Sized {
+    // TODO: Result
+    fn from_query(values: &[String]) -> Result<Self, ()>;
+}
+
+impl<T> FromQuery for Vec<T>
+where
+    T: FromQuery,
+{
+    fn from_query(values: &[String]) -> Result<Self, ()> {
+        values
+            .iter()
+            .map(|x| T::from_query(slice::from_ref(x)))
+            .collect()
+    }
+}
+
+impl<T> FromQuery for Option<T>
+where
+    T: FromQuery,
+{
+    fn from_query(values: &[String]) -> Result<Self, ()> {
+        if values.is_empty() {
+            Ok(None)
+        } else {
+            Ok(Some(T::from_query(values)?))
+        }
+    }
+}
+
+impl FromQuery for String {
+    fn from_query(values: &[String]) -> Result<Self, ()> {
+        if values.len() != 1 {
+            return Err(());
+        }
+        Ok(values[0].clone())
+    }
+}
+
+impl FromQuery for i32 {
+    fn from_query(values: &[String]) -> Result<Self, ()> {
+        if values.len() != 1 {
+            return Err(());
+        }
+        values[0].parse().map_err(|_| ())
+    }
 }
 
 // TODO: rails-like decoding
@@ -93,6 +142,23 @@ mod tests {
         ($($e:expr,)*) => {
             vec![$($e,)*].into_iter().collect::<std::collections::HashMap<_, _>>()
         };
+    }
+
+    #[test]
+    fn test_from_query() {
+        assert_eq!(String::from_query(&[]), Err(()));
+        assert_eq!(String::from_query(&[S("foo")]), Ok(S("foo")));
+        assert_eq!(String::from_query(&[S("foo"), S("bar")]), Err(()));
+        assert_eq!(Option::<String>::from_query(&[]), Ok(None));
+        assert_eq!(Option::<String>::from_query(&[S("foo")]), Ok(Some(S("foo"))));
+        assert_eq!(Option::<String>::from_query(&[S("foo"), S("bar")]), Err(()));
+        assert_eq!(i32::from_query(&[S("42")]), Ok(42));
+        assert_eq!(i32::from_query(&[S("42"), S("42")]), Err(()));
+        assert_eq!(i32::from_query(&[S("4x2")]), Err(()));
+        assert_eq!(i32::from_query(&[]), Err(()));
+        assert_eq!(Vec::<i32>::from_query(&[]), Ok(vec![]));
+        assert_eq!(Vec::<i32>::from_query(&[S("42")]), Ok(vec![42]));
+        assert_eq!(Vec::<i32>::from_query(&[S("42"), S("42")]), Ok(vec![42, 42]));
     }
 
     #[test]
