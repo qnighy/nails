@@ -68,7 +68,7 @@ impl FromQuery for i32 {
 // TODO: rails-like decoding
 // TODO: consider less-allocation way to decode query
 // TODO: handle illformed keys and values
-fn parse_query(query: &str) -> HashMap<String, Vec<String>> {
+pub fn parse_query(query: &str) -> HashMap<String, Vec<String>> {
     let mut hash: HashMap<String, Vec<String>> = HashMap::new();
     for pair in query.split("&") {
         let (key, value) = if let Some(pair) = parse_query_pair(pair) {
@@ -150,7 +150,10 @@ mod tests {
         assert_eq!(String::from_query(&[S("foo")]), Ok(S("foo")));
         assert_eq!(String::from_query(&[S("foo"), S("bar")]), Err(()));
         assert_eq!(Option::<String>::from_query(&[]), Ok(None));
-        assert_eq!(Option::<String>::from_query(&[S("foo")]), Ok(Some(S("foo"))));
+        assert_eq!(
+            Option::<String>::from_query(&[S("foo")]),
+            Ok(Some(S("foo")))
+        );
         assert_eq!(Option::<String>::from_query(&[S("foo"), S("bar")]), Err(()));
         assert_eq!(i32::from_query(&[S("42")]), Ok(42));
         assert_eq!(i32::from_query(&[S("42"), S("42")]), Err(()));
@@ -158,7 +161,10 @@ mod tests {
         assert_eq!(i32::from_query(&[]), Err(()));
         assert_eq!(Vec::<i32>::from_query(&[]), Ok(vec![]));
         assert_eq!(Vec::<i32>::from_query(&[S("42")]), Ok(vec![42]));
-        assert_eq!(Vec::<i32>::from_query(&[S("42"), S("42")]), Ok(vec![42, 42]));
+        assert_eq!(
+            Vec::<i32>::from_query(&[S("42"), S("42")]),
+            Ok(vec![42, 42])
+        );
     }
 
     #[test]

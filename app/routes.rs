@@ -22,8 +22,11 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
 
 #[derive(Debug, FromRequest)]
 #[nails(path = "/")]
-struct IndexRequest {}
+struct IndexRequest {
+    #[nails(query)]
+    a: Vec<String>,
+}
 
-async fn index(_req: IndexRequest) -> Response<Body> {
-    Response::new(Body::from("Hello, world!"))
+async fn index(req: IndexRequest) -> Response<Body> {
+    Response::new(Body::from(format!("Hello, world! {:?}", req.a)))
 }
