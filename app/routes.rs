@@ -2,8 +2,8 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 use serde::Serialize;
 use serde_derive::Serialize;
 
-use nails::{FromRequest, Routable, Router};
 use nails::response::ErrorResponse;
+use nails::{FromRequest, Routable, Router};
 
 pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body>> {
     let router = {
@@ -35,7 +35,10 @@ struct IndexRequest {
 }
 
 async fn index(req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
-    Ok(Response::new(Body::from(format!("Hello, world! {:?}", req.a))))
+    Ok(Response::new(Body::from(format!(
+        "Hello, world! {:?}",
+        req.a
+    ))))
 }
 
 #[derive(Debug, FromRequest)]
@@ -56,7 +59,9 @@ async fn get_post(_req: GetPostRequest) -> Result<Response<Body>, ErrorResponse>
     let body = GetPostBody {
         post: Post {
             body: String::from("foo"),
-        }
+        },
     };
-    Ok(Response::new(Body::from(serde_json::to_string(&body).unwrap())))
+    Ok(Response::new(Body::from(
+        serde_json::to_string(&body).unwrap(),
+    )))
 }
