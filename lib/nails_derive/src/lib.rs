@@ -6,10 +6,13 @@ use proc_macro2::{Literal, TokenStream, TokenTree};
 use quote::quote;
 use synstructure::decl_derive;
 
+use crate::path::PathPattern;
+
+mod path;
+
 decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
 
 fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
-    // TODO: support path with variable (e.g. "/api/posts/{id}")
     let mut path: Option<String> = None;
     for meta in s
         .ast()
@@ -37,7 +40,9 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
         }
     }
     let path = path.expect("#[nails(path = \"\")] is needed");
-    let path_lit = TokenTree::Literal(Literal::string(&path));
+    let path = path.parse::<PathPattern>().unwrap();
+    let path_prefix = path.path_prefix();
+    let path_condition = path.gen_path_condition(quote! { path });
 
     assert_eq!(s.variants().len(), 1);
     let variant = &s.variants()[0];
@@ -46,11 +51,11 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
     s.gen_impl(quote! {
         gen impl nails::FromRequest for @Self {
             fn path_prefix_hint() -> &'static str {
-                #path_lit
+                #path_prefix
             }
             fn match_path(method: &Method, path: &str) -> bool {
                 // TODO: configurable method kind
-                (*method == Method::GET || *method == Method::HEAD) && path == #path_lit
+                (*method == Method::GET || *method == Method::HEAD) && #path_condition
             }
 
             fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
