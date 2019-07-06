@@ -1,3 +1,5 @@
+#![recursion_limit = "128"]
+
 extern crate proc_macro;
 
 use proc_macro2::{Literal, TokenStream, TokenTree};
@@ -51,9 +53,9 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
                 (*method == Method::GET || *method == Method::HEAD) && path == #path_lit
             }
 
-            fn from_request(req: Request<Body>) -> Self {
+            fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                 let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
-                #construct
+                Ok(#construct)
             }
         }
     })

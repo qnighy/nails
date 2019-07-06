@@ -3,6 +3,7 @@ use serde::Serialize;
 use serde_derive::Serialize;
 
 use nails::{FromRequest, Routable, Router};
+use nails::response::ErrorResponse;
 
 pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body>> {
     let router = {
@@ -13,7 +14,10 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
     };
 
     let resp = if router.match_path(req.method(), req.uri().path()) {
-        router.respond(req).await
+        match router.respond(req).await {
+            Ok(resp) => resp,
+            Err(e) => e.to_response(),
+        }
     } else {
         Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -30,8 +34,8 @@ struct IndexRequest {
     a: Vec<String>,
 }
 
-async fn index(req: IndexRequest) -> Response<Body> {
-    Response::new(Body::from(format!("Hello, world! {:?}", req.a)))
+async fn index(req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
+    Ok(Response::new(Body::from(format!("Hello, world! {:?}", req.a))))
 }
 
 #[derive(Debug, FromRequest)]
@@ -48,11 +52,11 @@ struct Post {
     body: String,
 }
 
-async fn get_post(_req: GetPostRequest) -> Response<Body> {
+async fn get_post(_req: GetPostRequest) -> Result<Response<Body>, ErrorResponse> {
     let body = GetPostBody {
         post: Post {
             body: String::from("foo"),
         }
     };
-    Response::new(Body::from(serde_json::to_string(&body).unwrap()))
+    Ok(Response::new(Body::from(serde_json::to_string(&body).unwrap())))
 }

@@ -7,6 +7,7 @@ use std::pin::Pin;
 use hyper::{Body, Method, Request, Response};
 
 use crate::request::FromRequest;
+use crate::response::ErrorResponse;
 
 pub struct Router {
     routes: Vec<Box<dyn Routable + Send + 'static>>,
@@ -27,7 +28,7 @@ impl Router {
     pub fn add_function_route<F, Fut, Req>(&mut self, route: F)
     where
         F: Fn(Req) -> Fut + Send + 'static,
-        Fut: Future<Output = Response<Body>> + Send + 'static,
+        Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
         Req: FromRequest + 'static,
     {
         self.add_route(FunctionRoute::new(route))
@@ -49,7 +50,7 @@ impl Routable for Router {
     fn respond(
         &self,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>> {
+    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
         let method = req.method();
         let path = req.uri().path();
         let mut matched_route = None;
@@ -75,7 +76,7 @@ pub trait Routable {
     fn respond(
         &self,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>>;
 }
 
 pub struct FunctionRoute<F, Req> {
@@ -86,7 +87,7 @@ pub struct FunctionRoute<F, Req> {
 impl<F, Fut, Req> FunctionRoute<F, Req>
 where
     F: Fn(Req) -> Fut,
-    Fut: Future<Output = Response<Body>> + Send + 'static,
+    Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
 {
     pub fn new(f: F) -> Self {
@@ -100,7 +101,7 @@ where
 impl<F, Fut, Req> Routable for FunctionRoute<F, Req>
 where
     F: Fn(Req) -> Fut,
-    Fut: Future<Output = Response<Body>> + Send + 'static,
+    Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
 {
     fn path_prefix_hint(&self) -> &str {
@@ -114,8 +115,11 @@ where
     fn respond(
         &self,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Response<Body>> + Send + 'static>> {
-        let req = FromRequest::from_request(req);
+    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
+        let req = match FromRequest::from_request(req) {
+            Ok(req) => req,
+            Err(e) => return future::err(e).boxed(),
+        };
         (self.f)(req).boxed()
     }
 }

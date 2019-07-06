@@ -4,6 +4,8 @@ use std::slice;
 
 use hyper::{Body, Method, Request};
 
+use crate::response::ErrorResponse;
+
 pub use nails_derive::FromRequest;
 
 pub trait FromRequest: Sized {
@@ -12,9 +14,8 @@ pub trait FromRequest: Sized {
     }
     fn match_path(method: &Method, path: &str) -> bool;
 
-    // TODO: Result<Self>
     // TODO: Request<Body> -> RoutableRequest
-    fn from_request(req: Request<Body>) -> Self;
+    fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
 }
 
 pub trait FromQuery: Sized {
