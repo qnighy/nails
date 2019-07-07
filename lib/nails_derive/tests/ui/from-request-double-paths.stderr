@@ -1,0 +1,11 @@
+error: multiple #[nails(path)] definitions
+ --> $DIR/from-request-double-paths.rs:5:16
+  |
+5 | #[nails(path = "/api/posts/{idd}")]
+  |                ^^^^^^^^^^^^^^^^^^
+
+error: multiple #[nails(path)] definitions
+ --> $DIR/from-request-double-paths.rs:9:42
+  |
+9 | #[nails(path = "/api/posts/{id}", path = "/api/posts/{idd}")]
+  |                                          ^^^^^^^^^^^^^^^^^^

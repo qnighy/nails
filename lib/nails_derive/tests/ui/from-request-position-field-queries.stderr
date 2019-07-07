@@ -1,0 +1,5 @@
+error: Specify name with #[nails(query = "")]
+ --> $DIR/from-request-position-field-queries.rs:6:13
+  |
+6 |     #[nails(query)]
+  |             ^^^^^

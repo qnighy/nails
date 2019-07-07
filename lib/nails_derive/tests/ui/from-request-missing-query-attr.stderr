@@ -1,0 +1,7 @@
+error: proc-macro derive panicked
+ --> $DIR/from-request-missing-query-attr.rs:3:10
+  |
+3 | #[derive(FromRequest)]
+  |          ^^^^^^^^^^^
+  |
+  = help: message: FromRequest field must have #[nails(query)]

@@ -1,0 +1,5 @@
+error: #[nails(path)] is needed
+ --> $DIR/from-request-missing-path.rs:4:1
+  |
+4 | pub struct GetPostRequest {}
+  | ^^^

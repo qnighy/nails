@@ -1,0 +1,11 @@
+error: unknown option: `foo`
+ --> $DIR/from-request-unknown-attr.rs:4:35
+  |
+4 | #[nails(path = "/api/posts/{id}", foo)]
+  |                                   ^^^
+
+error: unknown option: `foo`
+  --> $DIR/from-request-unknown-attr.rs:10:20
+   |
+10 |     #[nails(query, foo)]
+   |                    ^^^

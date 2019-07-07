@@ -1,0 +1,11 @@
+error: multiple #[nails(query)] definitions
+ --> $DIR/from-request-double-queries.rs:7:21
+  |
+7 |     #[nails(query = "query1renamerename")]
+  |                     ^^^^^^^^^^^^^^^^^^^^
+
+error: multiple #[nails(query)] definitions
+  --> $DIR/from-request-double-queries.rs:14:45
+   |
+14 |     #[nails(query = "query1rename", query = "query1renamerename")]
+   |                                             ^^^^^^^^^^^^^^^^^^^^

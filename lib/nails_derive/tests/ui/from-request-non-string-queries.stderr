@@ -1,0 +1,11 @@
+error: string value or no value expected in #[nails(query)]
+ --> $DIR/from-request-non-string-queries.rs:6:21
+  |
+6 |     #[nails(query = 42)]
+  |                     ^^
+
+error: string value or no value expected in #[nails(query)]
+  --> $DIR/from-request-non-string-queries.rs:13:21
+   |
+13 |     #[nails(query = b"query1rename")]
+   |                     ^^^^^^^^^^^^^^^

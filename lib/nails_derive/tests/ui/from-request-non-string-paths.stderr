@@ -1,0 +1,17 @@
+error: string value expected in #[nails(path)]
+ --> $DIR/from-request-non-string-paths.rs:4:16
+  |
+4 | #[nails(path = 42)]
+  |                ^^
+
+error: string value expected in #[nails(path)]
+ --> $DIR/from-request-non-string-paths.rs:8:16
+  |
+8 | #[nails(path = b"/api/posts/{id}")]
+  |                ^^^^^^^^^^^^^^^^^^
+
+error: string value expected in #[nails(path)]
+  --> $DIR/from-request-non-string-paths.rs:12:9
+   |
+12 | #[nails(path)]
+   |         ^^^^
