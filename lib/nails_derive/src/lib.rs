@@ -9,25 +9,27 @@ use synstructure::decl_derive;
 
 use crate::attrs::{FieldAttrs, StructAttrs};
 use crate::path::PathPattern;
+use crate::utils::VariantInfoExt;
 
 mod attrs;
 mod path;
+mod utils;
 
 decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
 
-fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
-    let attrs = StructAttrs::parse(&s.ast().attrs).unwrap();
-    let path = attrs.path.clone().expect("#[nails(path = \"\")] is needed");
+fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::TokenStream> {
+    let attrs = StructAttrs::parse(&s.ast().attrs)?;
+    let path = attrs.path.clone().expect("#[nails(path = \"\")] is needed"); // TODO: error handling
     let path = path.path.value();
-    let path = path.parse::<PathPattern>().unwrap();
+    let path = path.parse::<PathPattern>().unwrap(); // TODO: error handling
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
 
     assert_eq!(s.variants().len(), 1);
     let variant = &s.variants()[0];
-    let construct = variant.construct(|field, idx| field_parser(field, idx));
+    let construct = variant.try_construct(|field, idx| field_parser(field, idx))?;
 
-    s.gen_impl(quote! {
+    Ok(s.gen_impl(quote! {
         gen impl nails::FromRequest for @Self {
             fn path_prefix_hint() -> &'static str {
                 #path_prefix
@@ -42,11 +44,11 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
                 Ok(#construct)
             }
         }
-    })
+    }))
 }
 
-fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
-    let attrs = FieldAttrs::parse(&field.attrs).unwrap();
+fn field_parser(field: &syn::Field, _idx: usize) -> syn::Result<TokenStream> {
+    let attrs = FieldAttrs::parse(&field.attrs)?;
     if let Some(ref query) = attrs.query {
         let query_name = if let Some(query_name) = &query.name {
             query_name.value()
@@ -55,7 +57,7 @@ fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
         } else {
             panic!("Specify name for this field"); // TODO: error handling
         };
-        quote! {
+        Ok(quote! {
             nails::request::FromQuery::from_query(
                 if let Some(values) = query_hash.get(#query_name) {
                     values.as_slice()
@@ -63,7 +65,7 @@ fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
                     &[]
                 }
             ).unwrap()  // TODO: error handling
-        }
+        })
     } else {
         panic!("FromRequest field must have #[nails(query)]");
     }
