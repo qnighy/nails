@@ -32,8 +32,15 @@ fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::T
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
 
-    assert_eq!(s.variants().len(), 1);
-    let variant = &s.variants()[0];
+    let variant = if let syn::Data::Struct(_) = &s.ast().data {
+        assert_eq!(s.variants().len(), 1);
+        &s.variants()[0]
+    } else {
+        return Err(syn::Error::new(
+            s.ast().span(),
+            "FromRequest cannot be derived for enums or unions",
+        ));
+    };
     let construct = variant.try_construct(|field, idx| field_parser(field, idx))?;
 
     Ok(s.gen_impl(quote! {
@@ -138,6 +145,21 @@ mod tests {
                     }
                 };
             }
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "FromRequest cannot be derived for enums or unions")]
+    fn test_derive_enum() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                enum GetPostRequest {
+                    Foo {}
+                }
+            }
+            expands to {}
             no_build
         }
     }
