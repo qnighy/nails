@@ -6,7 +6,7 @@ extern crate proc_macro;
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
-use synstructure::decl_derive;
+use syn::DeriveInput;
 
 use crate::attrs::{FieldAttrs, StructAttrs};
 use crate::path::PathPattern;
@@ -20,10 +20,15 @@ mod utils;
 #[macro_use]
 mod test_utils;
 
-decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
+#[proc_macro_derive(FromRequest, attributes(nails))]
+pub fn derive_from_request(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive_from_request2(input.into())
+        .unwrap_or_else(|e| e.to_compile_error())
+        .into()
+}
 
-fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::TokenStream> {
-    let input = s.ast();
+fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
+    let input = syn::parse2::<DeriveInput>(input)?;
     let attrs = StructAttrs::parse(&input.attrs)?;
     let path = attrs
         .path
@@ -45,7 +50,9 @@ fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::T
             "FromRequest cannot be derived for enums or unions",
         ));
     };
-    let construct = data.fields.try_construct(&input.ident, |field, idx| field_parser(field, idx))?;
+    let construct = data
+        .fields
+        .try_construct(&input.ident, |field, idx| field_parser(field, idx))?;
 
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
@@ -104,19 +111,17 @@ mod tests {
 
     #[test]
     fn test_derive1() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
-            #[nails(path = "/api/posts/{id}")]
-            struct GetPostRequest {
-                #[nails(query)]
-                param1: String,
-                #[nails(query = "param2rename")]
-                param2: String,
-            }
-        })
-        .unwrap();
-        let s = synstructure::Structure::new(&ast);
         assert_ts_eq!(
-            from_request_derive(s).unwrap(),
+            derive_from_request2(quote! {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query)]
+                    param1: String,
+                    #[nails(query = "param2rename")]
+                    param2: String,
+                }
+            })
+            .unwrap(),
             quote! {
                 impl nails::FromRequest for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
@@ -158,81 +163,69 @@ mod tests {
     #[test]
     #[should_panic(expected = "FromRequest cannot be derived for enums or unions")]
     fn test_derive_enum() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             enum GetPostRequest {
                 Foo {}
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             #[nails(path = "/api/posts/{idd}")]
             struct GetPostRequest {}
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths2() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}", path = "/api/posts/{idd}")]
             struct GetPostRequest {}
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "string value expected in #[nails(path)]")]
     fn test_derive_integer_path() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = 1)]
             struct GetPostRequest {}
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "#[nails(path)] is needed")]
     fn test_derive_missing_path() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             struct GetPostRequest {}
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "unknown option: `foo`")]
     fn test_derive_unknown_struct_attr() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}", foo)]
             struct GetPostRequest {}
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "multiple #[nails(query)] definitions")]
     fn test_derive_double_queries() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = "query1rename")]
@@ -241,14 +234,12 @@ mod tests {
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "multiple #[nails(query)] definitions")]
     fn test_derive_double_queries2() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = "query1rename", query = "query1renamerename")]
@@ -256,14 +247,12 @@ mod tests {
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "string value or no value expected in #[nails(query)]")]
     fn test_derive_integer_query_name() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = 1)]
@@ -271,14 +260,12 @@ mod tests {
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")]")]
     fn test_derive_missing_query_name_for_position_field() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest(
                 #[nails(query)]
@@ -286,28 +273,24 @@ mod tests {
             );
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "FromRequest field must have #[nails(query)]")]
     fn test_derive_missing_query_attr() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 query1: String,
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 
     #[test]
     #[should_panic(expected = "unknown option: `foo`")]
     fn test_derive_unknown_field_attr() {
-        let ast = syn::parse2::<syn::DeriveInput>(quote! {
+        derive_from_request2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query, foo)]
@@ -315,7 +298,5 @@ mod tests {
             }
         })
         .unwrap();
-        let s = synstructure::Structure::new(&ast);
-        from_request_derive(s).unwrap();
     }
 }
