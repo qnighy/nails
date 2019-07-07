@@ -177,14 +177,16 @@ impl FieldAttrs {
                     "extra parentheses in #[nails(query)]",
                 ));
             }
-            Meta::NameValue(nv) => if let Lit::Str(lit) = &nv.lit {
-                (Some(lit.clone()), nv.span())
-            } else {
-                return Err(syn::Error::new(
-                    nv.lit.span(),
-                    "string value or no value expected in #[nails(query)]",
-                ));
-            },
+            Meta::NameValue(nv) => {
+                if let Lit::Str(lit) = &nv.lit {
+                    (Some(lit.clone()), nv.span())
+                } else {
+                    return Err(syn::Error::new(
+                        nv.lit.span(),
+                        "string value or no value expected in #[nails(query)]",
+                    ));
+                }
+            }
         };
         if self.query.is_some() {
             return Err(syn::Error::new(

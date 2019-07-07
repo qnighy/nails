@@ -1,6 +1,6 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote};
-use syn::{Field, Fields, FieldsNamed, FieldsUnnamed, token};
+use quote::{quote, ToTokens};
+use syn::{token, Field, Fields, FieldsNamed, FieldsUnnamed};
 use synstructure::VariantInfo;
 
 pub(crate) trait VariantInfoExt {
@@ -34,7 +34,8 @@ impl VariantInfoExt for VariantInfo<'_> {
                                 err = Some(e);
                                 return;
                             }
-                        }.to_tokens(t);
+                        }
+                        .to_tokens(t);
                         quote!(,).to_tokens(t);
                     }
                 });
@@ -54,7 +55,8 @@ impl VariantInfoExt for VariantInfo<'_> {
                                 err = Some(e);
                                 return;
                             }
-                        }.to_tokens(t);
+                        }
+                        .to_tokens(t);
                         quote!(,).to_tokens(t);
                     }
                 });
