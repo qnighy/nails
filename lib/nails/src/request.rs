@@ -133,6 +133,7 @@ fn parse_percent_encoding(input: &str) -> Option<String> {
 }
 
 #[cfg(test)]
+#[cfg_attr(tarpaulin, skip)]
 mod tests {
     use super::*;
 
