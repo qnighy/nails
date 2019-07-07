@@ -3,11 +3,11 @@
 
 extern crate proc_macro;
 
-use proc_macro2::{Literal, TokenStream, TokenTree};
+use proc_macro2::TokenStream;
 use quote::quote;
 use synstructure::decl_derive;
 
-use crate::attrs::StructAttrs;
+use crate::attrs::{FieldAttrs, StructAttrs};
 use crate::path::PathPattern;
 
 mod attrs;
@@ -46,41 +46,15 @@ fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
 }
 
 fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
-    let mut query: Option<String> = None;
-    for meta in field.attrs.iter().filter_map(|attr| attr.parse_meta().ok()) {
-        if meta.name() == "nails" {
-            if let syn::Meta::List(ref list) = meta {
-                if let Some(ref pair) = list.nested.first() {
-                    if let &&syn::NestedMeta::Meta(syn::Meta::NameValue(ref nv)) = pair.value() {
-                        if nv.ident == "query" {
-                            if query.is_some() {
-                                panic!("Cannot have two `query` attributes");
-                            }
-                            if let syn::Lit::Str(ref value) = nv.lit {
-                                query = Some(value.value());
-                            } else {
-                                panic!("query value must be a string");
-                            }
-                        }
-                    } else if let &&syn::NestedMeta::Meta(syn::Meta::Word(ref name)) = pair.value()
-                    {
-                        if name == "query" {
-                            if query.is_some() {
-                                panic!("Cannot have two `query` attributes");
-                            }
-                            if let Some(ref ident) = field.ident {
-                                query = Some(ident.to_string());
-                            } else {
-                                panic!("Specify name for this field");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if let Some(ref query) = query {
-        let query_name = TokenTree::Literal(Literal::string(query));
+    let attrs = FieldAttrs::parse(&field.attrs).unwrap();
+    if let Some(ref query) = attrs.query {
+        let query_name = if let Some(query_name) = &query.name {
+            query_name.value()
+        } else if let Some(ident) = &field.ident {
+            ident.to_string()
+        } else {
+            panic!("Specify name for this field"); // TODO: error handling
+        };
         quote! {
             nails::request::FromQuery::from_query(
                 if let Some(values) = query_hash.get(#query_name) {
@@ -209,7 +183,20 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot have two `query` attributes")]
+    #[should_panic(expected = "unknown option: `foo`")]
+    fn test_derive_unknown_struct_attr() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}", foo)]
+                struct GetPostRequest {}
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "multiple #[nails(query)] definitions")]
     fn test_derive_double_queries() {
         test_derive! {
             from_request_derive {
@@ -226,7 +213,23 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "query value must be a string")]
+    #[should_panic(expected = "multiple #[nails(query)] definitions")]
+    fn test_derive_double_queries2() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query = "query1rename", query = "query1renamerename")]
+                    query1: String,
+                }
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "string value or no value expected in #[nails(query)]")]
     fn test_derive_integer_query_name() {
         test_derive! {
             from_request_derive {
@@ -264,6 +267,22 @@ mod tests {
             from_request_derive {
                 #[nails(path = "/api/posts/{id}")]
                 struct GetPostRequest {
+                    query1: String,
+                }
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "unknown option: `foo`")]
+    fn test_derive_unknown_field_attr() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query, foo)]
                     query1: String,
                 }
             }
