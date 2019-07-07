@@ -1,5 +1,4 @@
 use hyper::{Body, Method, Request, Response, StatusCode};
-use serde::Serialize;
 use serde_derive::Serialize;
 
 use nails::response::ErrorResponse;
