@@ -84,7 +84,10 @@ fn field_parser(field: &syn::Field, _idx: usize) -> syn::Result<TokenStream> {
             ).unwrap()  // TODO: error handling
         })
     } else {
-        panic!("FromRequest field must have #[nails(query)]");
+        return Err(syn::Error::new(
+            field.span(),
+            "FromRequest field must have #[nails(query)]",
+        ));
     }
 }
 
