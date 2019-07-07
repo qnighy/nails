@@ -5,6 +5,7 @@ extern crate proc_macro;
 
 use proc_macro2::TokenStream;
 use quote::quote;
+use syn::spanned::Spanned;
 use synstructure::decl_derive;
 
 use crate::attrs::{FieldAttrs, StructAttrs};
@@ -19,9 +20,15 @@ decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
 
 fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::TokenStream> {
     let attrs = StructAttrs::parse(&s.ast().attrs)?;
-    let path = attrs.path.clone().expect("#[nails(path = \"\")] is needed"); // TODO: error handling
-    let path = path.path.value();
-    let path = path.parse::<PathPattern>().unwrap(); // TODO: error handling
+    let path = attrs
+        .path
+        .clone()
+        .ok_or_else(|| syn::Error::new(s.ast().span(), "#[nails(path)] is needed"))?;
+    let path = path
+        .path
+        .value()
+        .parse::<PathPattern>()
+        .map_err(|e| syn::Error::new(path.path.span(), e))?;
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
 
@@ -55,7 +62,10 @@ fn field_parser(field: &syn::Field, _idx: usize) -> syn::Result<TokenStream> {
         } else if let Some(ident) = &field.ident {
             ident.to_string()
         } else {
-            panic!("Specify name for this field"); // TODO: error handling
+            return Err(syn::Error::new(
+                query.span,
+                "Specify name with #[nails(query = \"\")]",
+            ));
         };
         Ok(quote! {
             nails::request::FromQuery::from_query(
@@ -173,7 +183,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "#[nails(path = \"\")] is needed")]
+    #[should_panic(expected = "#[nails(path)] is needed")]
     fn test_derive_missing_path() {
         test_derive! {
             from_request_derive {
@@ -247,7 +257,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Specify name for this field")]
+    #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")]")]
     fn test_derive_missing_query_name_for_position_field() {
         test_derive! {
             from_request_derive {
