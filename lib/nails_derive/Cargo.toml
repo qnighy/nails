@@ -10,5 +10,8 @@ syn = "0.15.37"
 synstructure = "0.10.2"
 proc-macro2 = "0.4.30"
 
+[features]
+proc_macro_diagnostics = []
+
 [lib]
 proc-macro = true

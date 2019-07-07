@@ -1,4 +1,5 @@
 #![recursion_limit = "128"]
+#![cfg_attr(feature = "proc_macro_diagnostics", feature(proc_macro_diagnostics))]
 
 extern crate proc_macro;
 
@@ -6,40 +7,18 @@ use proc_macro2::{Literal, TokenStream, TokenTree};
 use quote::quote;
 use synstructure::decl_derive;
 
+use crate::attrs::StructAttrs;
 use crate::path::PathPattern;
 
+mod attrs;
 mod path;
 
 decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
 
 fn from_request_derive(s: synstructure::Structure) -> proc_macro2::TokenStream {
-    let mut path: Option<String> = None;
-    for meta in s
-        .ast()
-        .attrs
-        .iter()
-        .filter_map(|attr| attr.parse_meta().ok())
-    {
-        if meta.name() == "nails" {
-            if let syn::Meta::List(ref list) = meta {
-                if let Some(ref pair) = list.nested.first() {
-                    if let &&syn::NestedMeta::Meta(syn::Meta::NameValue(ref nv)) = pair.value() {
-                        if nv.ident == "path" {
-                            if path.is_some() {
-                                panic!("Cannot have two `path` attributes");
-                            }
-                            if let syn::Lit::Str(ref value) = nv.lit {
-                                path = Some(value.value());
-                            } else {
-                                panic!("path must be a string");
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    let path = path.expect("#[nails(path = \"\")] is needed");
+    let attrs = StructAttrs::parse(&s.ast().attrs).unwrap();
+    let path = attrs.path.clone().expect("#[nails(path = \"\")] is needed");
+    let path = path.path.value();
     let path = path.parse::<PathPattern>().unwrap();
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
@@ -178,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Cannot have two `path` attributes")]
+    #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths() {
         test_derive! {
             from_request_derive {
@@ -192,7 +171,20 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "path must be a string")]
+    #[should_panic(expected = "multiple #[nails(path)] definitions")]
+    fn test_derive_double_paths2() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}", path = "/api/posts/{idd}")]
+                struct GetPostRequest {}
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "string value expected in #[nails(path)]")]
     fn test_derive_integer_path() {
         test_derive! {
             from_request_derive {
