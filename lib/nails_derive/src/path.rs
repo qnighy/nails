@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt;
 use std::str::FromStr;
 
@@ -8,6 +9,7 @@ use quote::quote;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PathPattern {
     components: Vec<ComponentMatcher>,
+    bindings: HashSet<String>,
 }
 
 impl PathPattern {
@@ -96,7 +98,27 @@ impl FromStr for PathPattern {
                 }
             })
             .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { components })
+
+        let mut bindings = HashSet::new();
+        for comp in &components {
+            match comp {
+                ComponentMatcher::String(_) => {}
+                ComponentMatcher::Var(name) => {
+                    let success = bindings.insert(name.clone());
+                    if !success {
+                        return Err(ParseError::new(
+                            path,
+                            &format!("duplicate name: `{}`", name),
+                        ));
+                    }
+                }
+            }
+        }
+
+        Ok(Self {
+            components,
+            bindings,
+        })
     }
 }
 
@@ -149,6 +171,15 @@ fn is_ident(s: &str) -> bool {
 #[cfg_attr(tarpaulin, skip)]
 mod tests {
     use super::*;
+
+    macro_rules! hash_set {
+        [$($e:expr),*] => {
+            vec![$($e,)*].into_iter().collect::<HashSet<_>>()
+        };
+        [$($e:expr)*,] => {
+            vec![$($e,)*].into_iter().collect::<HashSet<_>>()
+        };
+    }
 
     macro_rules! assert_ts_eq {
         ($lhs:expr, $rhs:expr) => {{
@@ -234,12 +265,14 @@ right: ```
             parse("/"),
             PathPattern {
                 components: vec![ComponentMatcher::String(S("")),],
+                bindings: hash_set![],
             },
         );
         assert_eq!(
             parse("/ping"),
             PathPattern {
                 components: vec![ComponentMatcher::String(S("ping")),],
+                bindings: hash_set![],
             },
         );
         assert_eq!(
@@ -249,6 +282,7 @@ right: ```
                     ComponentMatcher::String(S("api")),
                     ComponentMatcher::String(S("")),
                 ],
+                bindings: hash_set![],
             },
         );
         assert_eq!(
@@ -259,6 +293,7 @@ right: ```
                     ComponentMatcher::String(S("posts")),
                     ComponentMatcher::Var(S("id")),
                 ],
+                bindings: hash_set![S("id")],
             },
         );
         assert_eq!(
@@ -271,6 +306,7 @@ right: ```
                     ComponentMatcher::String(S("comments")),
                     ComponentMatcher::Var(S("id")),
                 ],
+                bindings: hash_set![S("post_id"), S("id")],
             },
         );
     }
@@ -308,6 +344,10 @@ right: ```
         assert_eq!(
             parse_err("/api/posts/{1}/"),
             "variable must be /[a-zA-Z_][a-zA-Z0-9_]*/",
+        );
+        assert_eq!(
+            parse_err("/api/posts/{id}/comments/{id}"),
+            "duplicate name: `id`",
         );
     }
 
