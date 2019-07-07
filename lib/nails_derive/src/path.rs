@@ -172,38 +172,14 @@ fn is_ident(s: &str) -> bool {
 mod tests {
     use super::*;
 
+    use crate::assert_ts_eq;
+
     macro_rules! hash_set {
         [$($e:expr),*] => {
             vec![$($e,)*].into_iter().collect::<HashSet<_>>()
         };
         [$($e:expr)*,] => {
             vec![$($e,)*].into_iter().collect::<HashSet<_>>()
-        };
-    }
-
-    macro_rules! assert_ts_eq {
-        ($lhs:expr, $rhs:expr) => {{
-            let lhs: TokenStream = $lhs;
-            let rhs: TokenStream = $rhs;
-            if lhs.to_string() != rhs.to_string() {
-                panic!(
-                    r#"assertion failed: `(left == right)`
-left:
-```
-{}
-```
-
-right: ```
-{}
-```
-"#,
-                    synstructure::unpretty_print(&lhs),
-                    synstructure::unpretty_print(&rhs)
-                );
-            }
-        }};
-        ($lhs:expr, $rhs:expr,) => {
-            assert_ts_eq!($lhs, $rhs)
         };
     }
 
