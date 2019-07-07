@@ -10,7 +10,7 @@ use synstructure::decl_derive;
 
 use crate::attrs::{FieldAttrs, StructAttrs};
 use crate::path::PathPattern;
-use crate::utils::VariantInfoExt;
+use crate::utils::FieldsExt;
 
 mod attrs;
 mod path;
@@ -23,11 +23,12 @@ mod test_utils;
 decl_derive!([FromRequest, attributes(nails)] => from_request_derive);
 
 fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::TokenStream> {
-    let attrs = StructAttrs::parse(&s.ast().attrs)?;
+    let input = s.ast();
+    let attrs = StructAttrs::parse(&input.attrs)?;
     let path = attrs
         .path
         .clone()
-        .ok_or_else(|| syn::Error::new(s.ast().span(), "#[nails(path)] is needed"))?;
+        .ok_or_else(|| syn::Error::new(input.span(), "#[nails(path)] is needed"))?;
     let path = path
         .path
         .value()
@@ -36,19 +37,20 @@ fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::T
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
 
-    let variant = if let syn::Data::Struct(_) = &s.ast().data {
-        assert_eq!(s.variants().len(), 1);
-        &s.variants()[0]
+    let data = if let syn::Data::Struct(data) = &input.data {
+        data
     } else {
         return Err(syn::Error::new(
-            s.ast().span(),
+            input.span(),
             "FromRequest cannot be derived for enums or unions",
         ));
     };
-    let construct = variant.try_construct(|field, idx| field_parser(field, idx))?;
+    let construct = data.fields.try_construct(&input.ident, |field, idx| field_parser(field, idx))?;
 
-    Ok(s.gen_impl(quote! {
-        gen impl nails::FromRequest for @Self {
+    let name = &input.ident;
+    let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
+    Ok(quote! {
+        impl #impl_generics nails::FromRequest for #name #ty_generics #where_clause {
             fn path_prefix_hint() -> &'static str {
                 #path_prefix
             }
@@ -62,7 +64,7 @@ fn from_request_derive(s: synstructure::Structure) -> syn::Result<proc_macro2::T
                 Ok(#construct)
             }
         }
-    }))
+    })
 }
 
 fn field_parser(field: &syn::Field, _idx: usize) -> syn::Result<TokenStream> {
@@ -116,42 +118,39 @@ mod tests {
         assert_ts_eq!(
             from_request_derive(s).unwrap(),
             quote! {
-                #[allow(non_upper_case_globals)]
-                const _DERIVE_nails_FromRequest_FOR_GetPostRequest: () = {
-                    impl nails::FromRequest for GetPostRequest {
-                        fn path_prefix_hint() -> &'static str { "/api/posts/" }
-                        fn match_path(method: &Method, path: &str) -> bool {
-                            (*method == Method::GET || *method == Method::HEAD) && (
-                                path.starts_with("/") && {
-                                    let mut path_iter = path[1..].split("/");
-                                    path_iter.next().map(|comp| comp == "api").unwrap_or(false)
-                                        && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
-                                        && path_iter.next().is_some()
-                                        && path_iter.next().is_none()
-                                }
-                            )
-                        }
-                        fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
-                            let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
-                            Ok(GetPostRequest {
-                                param1: nails::request::FromQuery::from_query(
-                                    if let Some(values) = query_hash.get("param1") {
-                                        values.as_slice()
-                                    } else {
-                                        &[]
-                                    }
-                                ).unwrap(),
-                                param2: nails::request::FromQuery::from_query(
-                                    if let Some(values) = query_hash.get("param2rename") {
-                                        values.as_slice()
-                                    } else {
-                                        &[]
-                                    }
-                                ).unwrap(),
-                            })
-                        }
+                impl nails::FromRequest for GetPostRequest {
+                    fn path_prefix_hint() -> &'static str { "/api/posts/" }
+                    fn match_path(method: &Method, path: &str) -> bool {
+                        (*method == Method::GET || *method == Method::HEAD) && (
+                            path.starts_with("/") && {
+                                let mut path_iter = path[1..].split("/");
+                                path_iter.next().map(|comp| comp == "api").unwrap_or(false)
+                                    && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
+                                    && path_iter.next().is_some()
+                                    && path_iter.next().is_none()
+                            }
+                        )
                     }
-                };
+                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        Ok(GetPostRequest {
+                            param1: nails::request::FromQuery::from_query(
+                                if let Some(values) = query_hash.get("param1") {
+                                    values.as_slice()
+                                } else {
+                                    &[]
+                                }
+                            ).unwrap(),
+                            param2: nails::request::FromQuery::from_query(
+                                if let Some(values) = query_hash.get("param2rename") {
+                                    values.as_slice()
+                                } else {
+                                    &[]
+                                }
+                            ).unwrap(),
+                        })
+                    }
+                }
             },
         );
     }

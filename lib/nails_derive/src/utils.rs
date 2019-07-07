@@ -1,30 +1,26 @@
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
-use syn::{token, Field, Fields, FieldsNamed, FieldsUnnamed};
-use synstructure::VariantInfo;
+use syn::{token, Field, Fields, FieldsNamed, FieldsUnnamed, Ident};
 
-pub(crate) trait VariantInfoExt {
-    fn try_construct<F, T, E>(&self, func: F) -> Result<TokenStream, E>
+pub(crate) trait FieldsExt {
+    fn try_construct<F, T, E>(&self, ident: &Ident, func: F) -> Result<TokenStream, E>
     where
         F: FnMut(&Field, usize) -> Result<T, E>,
         T: ToTokens;
 }
 
-impl VariantInfoExt for VariantInfo<'_> {
-    fn try_construct<F, T, E>(&self, mut func: F) -> Result<TokenStream, E>
+impl FieldsExt for Fields {
+    fn try_construct<F, T, E>(&self, ident: &Ident, mut func: F) -> Result<TokenStream, E>
     where
         F: FnMut(&Field, usize) -> Result<T, E>,
         T: ToTokens,
     {
         let mut t = TokenStream::new();
-        if let Some(prefix) = self.prefix {
-            quote!(#prefix ::).to_tokens(&mut t);
-        }
-        self.ast().ident.to_tokens(&mut t);
+        ident.to_tokens(&mut t);
 
-        match *self.ast().fields {
+        match self {
             Fields::Unit => (),
-            Fields::Unnamed(FieldsUnnamed { ref unnamed, .. }) => {
+            Fields::Unnamed(FieldsUnnamed { unnamed, .. }) => {
                 let mut err = None;
                 token::Paren::default().surround(&mut t, |t| {
                     for (i, field) in unnamed.into_iter().enumerate() {
@@ -43,7 +39,7 @@ impl VariantInfoExt for VariantInfo<'_> {
                     return Err(e);
                 }
             }
-            Fields::Named(FieldsNamed { ref named, .. }) => {
+            Fields::Named(FieldsNamed { named, .. }) => {
                 let mut err = None;
                 token::Brace::default().surround(&mut t, |t| {
                     for (i, field) in named.into_iter().enumerate() {
