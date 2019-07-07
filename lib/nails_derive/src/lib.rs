@@ -115,3 +115,168 @@ fn field_parser(field: &syn::Field, _idx: usize) -> TokenStream {
         panic!("FromRequest field must have #[nails(query)]");
     }
 }
+
+#[cfg(test)]
+#[cfg_attr(tarpaulin, skip)]
+mod tests {
+    use super::*;
+
+    use synstructure::test_derive;
+
+    #[test]
+    fn test_derive1() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query)]
+                    param1: String,
+                    #[nails(query = "param2rename")]
+                    param2: String,
+                }
+            }
+            expands to {
+                #[allow(non_upper_case_globals)]
+                const _DERIVE_nails_FromRequest_FOR_GetPostRequest: () = {
+                    impl nails::FromRequest for GetPostRequest {
+                        fn path_prefix_hint() -> &'static str { "/api/posts/" }
+                        fn match_path(method: &Method, path: &str) -> bool {
+                            (*method == Method::GET || *method == Method::HEAD) && (
+                                path.starts_with("/") && {
+                                    let mut path_iter = path[1..].split("/");
+                                    path_iter.next().map(|comp| comp == "api").unwrap_or(false)
+                                        && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
+                                        && path_iter.next().is_some()
+                                        && path_iter.next().is_none()
+                                }
+                            )
+                        }
+                        fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                            let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                            Ok(GetPostRequest {
+                                param1: nails::request::FromQuery::from_query(
+                                    if let Some(values) = query_hash.get("param1") {
+                                        values.as_slice()
+                                    } else {
+                                        &[]
+                                    }
+                                ).unwrap(),
+                                param2: nails::request::FromQuery::from_query(
+                                    if let Some(values) = query_hash.get("param2rename") {
+                                        values.as_slice()
+                                    } else {
+                                        &[]
+                                    }
+                                ).unwrap(),
+                            })
+                        }
+                    }
+                };
+            }
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot have two `path` attributes")]
+    fn test_derive_double_paths() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                #[nails(path = "/api/posts/{idd}")]
+                struct GetPostRequest {}
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "path must be a string")]
+    fn test_derive_integer_path() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = 1)]
+                struct GetPostRequest {}
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "#[nails(path = \"\")] is needed")]
+    fn test_derive_missing_path() {
+        test_derive! {
+            from_request_derive {
+                struct GetPostRequest {}
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Cannot have two `query` attributes")]
+    fn test_derive_double_queries() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query = "query1rename")]
+                    #[nails(query = "query1renamerename")]
+                    query1: String,
+                }
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "query value must be a string")]
+    fn test_derive_integer_query_name() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    #[nails(query = 1)]
+                    query1: String,
+                }
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "Specify name for this field")]
+    fn test_derive_missing_query_name_for_position_field() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest(
+                    #[nails(query)]
+                    String,
+                );
+            }
+            expands to {}
+            no_build
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "FromRequest field must have #[nails(query)]")]
+    fn test_derive_missing_query_attr() {
+        test_derive! {
+            from_request_derive {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest {
+                    query1: String,
+                }
+            }
+            expands to {}
+            no_build
+        }
+    }
+}

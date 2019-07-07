@@ -5,7 +5,7 @@ use proc_macro2::TokenStream;
 use quote::quote;
 
 // TODO: support recursive glob like `/admin/sidekiq/{path*}`
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PathPattern {
     components: Vec<ComponentMatcher>,
 }
@@ -100,7 +100,7 @@ impl FromStr for PathPattern {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum ComponentMatcher {
     String(String),
     Var(String),
@@ -131,10 +131,210 @@ impl fmt::Display for ParseError {
     }
 }
 
+impl std::error::Error for ParseError {
+    fn description(&self) -> &str {
+        "error while parsing path matcher"
+    }
+}
+
 fn is_ident(s: &str) -> bool {
     let s = s.as_bytes();
     s.len() > 0
         && s != b"_"
         && (s[0].is_ascii_alphabetic() || s[0] == b'_')
         && s.iter().all(|&c| c.is_ascii_alphanumeric() || c == b'_')
+}
+
+#[cfg(test)]
+#[cfg_attr(tarpaulin, skip)]
+mod tests {
+    use super::*;
+
+    macro_rules! assert_ts_eq {
+        ($lhs:expr, $rhs:expr) => {{
+            let lhs: TokenStream = $lhs;
+            let rhs: TokenStream = $rhs;
+            if lhs.to_string() != rhs.to_string() {
+                panic!(
+                    r#"assertion failed: `(left == right)`
+left:
+```
+{}
+```
+
+right: ```
+{}
+```
+"#,
+                    synstructure::unpretty_print(&lhs),
+                    synstructure::unpretty_print(&rhs)
+                );
+            }
+        }};
+        ($lhs:expr, $rhs:expr,) => {
+            assert_ts_eq!($lhs, $rhs)
+        };
+    }
+
+    #[test]
+    fn test_is_ident() {
+        assert!(is_ident("foo_bar2"));
+        assert!(is_ident("_foo_bar2"));
+        assert!(!is_ident("_"));
+        assert!(!is_ident("1st"));
+        assert!(!is_ident("foo-bar"));
+    }
+
+    #[test]
+    fn test_path_prefix() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse = |s| parse(s).unwrap();
+        assert_eq!(parse("/").path_prefix(), "/");
+        assert_eq!(parse("/api/posts/{id}").path_prefix(), "/api/posts/");
+        assert_eq!(
+            parse("/api/posts/{post_id}/comments/{id}").path_prefix(),
+            "/api/posts/",
+        );
+    }
+
+    #[test]
+    fn test_gen_path_condition() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse = |s| parse(s).unwrap();
+        assert_ts_eq!(
+            parse("/").gen_path_condition(quote! { path }),
+            quote! {
+                (path.starts_with("/") && {
+                    let mut path_iter = path[1..].split("/");
+                    path_iter.next().map(|comp| comp == "").unwrap_or(false)
+                        && path_iter.next().is_none()
+                })
+            },
+        );
+
+        assert_ts_eq!(
+            parse("/api/posts/{id}").gen_path_condition(quote! { path }),
+            quote! {
+                (path.starts_with("/") && {
+                    let mut path_iter = path[1..].split("/");
+                    path_iter.next().map(|comp| comp == "api").unwrap_or(false)
+                        && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
+                        && path_iter.next().is_some()
+                        && path_iter.next().is_none()
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn test_parse() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse = |s| parse(s).unwrap();
+        assert_eq!(
+            parse("/"),
+            PathPattern {
+                components: vec![ComponentMatcher::String(S("")),],
+            },
+        );
+        assert_eq!(
+            parse("/ping"),
+            PathPattern {
+                components: vec![ComponentMatcher::String(S("ping")),],
+            },
+        );
+        assert_eq!(
+            parse("/api/"),
+            PathPattern {
+                components: vec![
+                    ComponentMatcher::String(S("api")),
+                    ComponentMatcher::String(S("")),
+                ],
+            },
+        );
+        assert_eq!(
+            parse("/api/posts/{id}"),
+            PathPattern {
+                components: vec![
+                    ComponentMatcher::String(S("api")),
+                    ComponentMatcher::String(S("posts")),
+                    ComponentMatcher::Var(S("id")),
+                ],
+            },
+        );
+        assert_eq!(
+            parse("/api/posts/{post_id}/comments/{id}"),
+            PathPattern {
+                components: vec![
+                    ComponentMatcher::String(S("api")),
+                    ComponentMatcher::String(S("posts")),
+                    ComponentMatcher::Var(S("post_id")),
+                    ComponentMatcher::String(S("comments")),
+                    ComponentMatcher::Var(S("id")),
+                ],
+            },
+        );
+    }
+
+    #[test]
+    fn test_parse_error() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse_err = |s| parse(s).unwrap_err().message;
+        assert_eq!(parse_err(""), "must start with slash");
+        assert_eq!(parse_err("api/posts/{id}"), "must start with slash",);
+        assert_eq!(
+            parse_err("/api/posts/post_{id}"),
+            "variable must span the whole path component",
+        );
+        assert_eq!(
+            parse_err("/api/posts/{foo}_{bar}"),
+            "variable must span the whole path component",
+        );
+        assert_eq!(
+            parse_err("/api/posts/}/"),
+            "variable must span the whole path component",
+        );
+        assert_eq!(
+            parse_err("/api/posts/{barrr/"),
+            "variable must span the whole path component",
+        );
+        assert_eq!(
+            parse_err("/api/posts/}foo{/"),
+            "variable must span the whole path component",
+        );
+        assert_eq!(
+            parse_err("/api/posts/{}/"),
+            "variable must contain variable name",
+        );
+        assert_eq!(
+            parse_err("/api/posts/{1}/"),
+            "variable must be /[a-zA-Z_][a-zA-Z0-9_]*/",
+        );
+    }
+
+    #[test]
+    fn test_parse_error_message() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse_err = |s| parse(s).unwrap_err().to_string();
+        assert_eq!(
+            parse_err(""),
+            "error while parsing path matcher ``: must start with slash",
+        );
+        assert_eq!(
+            parse_err("api/posts/{id}"),
+            "error while parsing path matcher `api/posts/{id}`: must start with slash",
+        );
+
+        {
+            use std::error::Error as _;
+            assert_eq!(
+                parse("").unwrap_err().description(),
+                "error while parsing path matcher",
+            );
+        }
+    }
+
+    #[allow(non_snake_case)]
+    fn S(s: &'static str) -> String {
+        s.to_owned()
+    }
 }
