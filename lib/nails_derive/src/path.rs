@@ -55,6 +55,8 @@ impl PathPattern {
             }
         )}
     }
+
+    pub(crate) fn bindings(&self) -> &HashSet<String> { &self.bindings }
 }
 
 impl FromStr for PathPattern {

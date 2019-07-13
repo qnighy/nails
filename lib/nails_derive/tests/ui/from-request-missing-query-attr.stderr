@@ -1,5 +1,0 @@
-error: FromRequest field must have #[nails(query)]
- --> $DIR/from-request-missing-query-attr.rs:6:5
-  |
-6 |     query1: String,
-  |     ^^^^^^

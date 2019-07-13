@@ -3,6 +3,8 @@
 
 extern crate proc_macro;
 
+use std::collections::HashSet;
+
 use proc_macro2::TokenStream;
 use quote::quote;
 use syn::spanned::Spanned;
@@ -29,18 +31,6 @@ pub fn derive_from_request(input: proc_macro::TokenStream) -> proc_macro::TokenS
 
 fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     let input = syn::parse2::<DeriveInput>(input)?;
-    let attrs = StructAttrs::parse(&input.attrs)?;
-    let path = attrs
-        .path
-        .clone()
-        .ok_or_else(|| syn::Error::new(input.span(), "#[nails(path)] is needed"))?;
-    let path = path
-        .path
-        .value()
-        .parse::<PathPattern>()
-        .map_err(|e| syn::Error::new(path.path.span(), e))?;
-    let path_prefix = path.path_prefix();
-    let path_condition = path.gen_path_condition(quote! { path });
 
     let data = if let syn::Data::Struct(data) = &input.data {
         data
@@ -50,9 +40,31 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
             "FromRequest cannot be derived for enums or unions",
         ));
     };
+    let attrs = StructAttrs::parse(&input.attrs)?;
+    let field_attrs = data.fields.iter().map(|field| {
+        FieldAttrs::parse(&field.attrs)
+    }).collect::<Result<Vec<_>, _>>()?;
+
+    let path = attrs
+        .path
+        .clone()
+        .ok_or_else(|| syn::Error::new(input.span(), "#[nails(path)] is needed"))?;
+    let path = path
+        .path
+        .value()
+        .parse::<PathPattern>()
+        .map_err(|e| syn::Error::new(path.path.span(), e))?;
+
+    let field_kinds = data.fields.iter().zip(&field_attrs).map(|(field, attrs)| {
+        FieldKind::parse_from(field, attrs, path.bindings())
+    }).collect::<Result<Vec<_>, _>>()?;
+
+    let path_prefix = path.path_prefix();
+    let path_condition = path.gen_path_condition(quote! { path });
+
     let construct = data
         .fields
-        .try_construct(&input.ident, |field, idx| field_parser(field, idx))?;
+        .try_construct(&input.ident, |field, idx| field_kinds[idx].gen_parser(field))?;
 
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
@@ -74,33 +86,68 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     })
 }
 
-fn field_parser(field: &syn::Field, _idx: usize) -> syn::Result<TokenStream> {
-    let attrs = FieldAttrs::parse(&field.attrs)?;
-    if let Some(ref query) = attrs.query {
-        let query_name = if let Some(query_name) = &query.name {
-            query_name.value()
-        } else if let Some(ident) = &field.ident {
-            ident.to_string()
-        } else {
-            return Err(syn::Error::new(
-                query.span,
-                "Specify name with #[nails(query = \"\")]",
-            ));
-        };
-        Ok(quote! {
-            nails::request::FromQuery::from_query(
-                if let Some(values) = query_hash.get(#query_name) {
-                    values.as_slice()
-                } else {
-                    &[]
-                }
-            ).unwrap()  // TODO: error handling
-        })
-    } else {
-        return Err(syn::Error::new(
+#[derive(Debug)]
+enum FieldKind {
+    Path {
+        var: String,
+    },
+    Query {
+        name: String,
+    },
+}
+
+impl FieldKind {
+    fn parse_from(field: &syn::Field, attrs: &FieldAttrs, path_bindings: &HashSet<String>) -> syn::Result<FieldKind> {
+        if let Some(query) = &attrs.query {
+            let query_name = if let Some(query_name) = &query.name {
+                query_name.value()
+            } else if let Some(ident) = &field.ident {
+                ident.to_string()
+            } else {
+                return Err(syn::Error::new(
+                    query.span,
+                    "Specify name with #[nails(query = \"\")]",
+                ));
+            };
+            return Ok(FieldKind::Query {
+                name: query_name,
+            });
+        }
+
+        // ident-based fallback
+        let ident = field.ident.as_ref().ok_or_else(|| syn::Error::new(
             field.span(),
-            "FromRequest field must have #[nails(query)]",
-        ));
+            "Specify name with #[nails(query = \"\")] or alike",
+        ))?;
+        let ident_name = ident.to_string();
+        if path_bindings.contains(&ident_name) {
+            // fallback to path
+            Ok(FieldKind::Path {
+                var: ident_name,
+            })
+        } else {
+            // fallback to query
+            Ok(FieldKind::Query {
+                name: ident_name,
+            })
+        }
+    }
+
+    fn gen_parser(&self, _field: &syn::Field) -> syn::Result<TokenStream> {
+        Ok(match self {
+            FieldKind::Path { var: _var } => quote! {
+                unimplemented!() // TODO: handle paths
+            },
+            FieldKind::Query { name } => quote! {
+                nails::request::FromQuery::from_query(
+                    if let Some(values) = query_hash.get(#name) {
+                        values.as_slice()
+                    } else {
+                        &[]
+                    }
+                ).unwrap()  // TODO: error handling
+            },
+        })
     }
 }
 
@@ -115,10 +162,12 @@ mod tests {
             derive_from_request2(quote! {
                 #[nails(path = "/api/posts/{id}")]
                 struct GetPostRequest {
+                    id: String,
                     #[nails(query)]
                     param1: String,
                     #[nails(query = "param2rename")]
                     param2: String,
+                    param3: String,
                 }
             })
             .unwrap(),
@@ -139,6 +188,7 @@ mod tests {
                     fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                         Ok(GetPostRequest {
+                            id: unimplemented!(),
                             param1: nails::request::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
@@ -148,6 +198,13 @@ mod tests {
                             ).unwrap(),
                             param2: nails::request::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param2rename") {
+                                    values.as_slice()
+                                } else {
+                                    &[]
+                                }
+                            ).unwrap(),
+                            param3: nails::request::FromQuery::from_query(
+                                if let Some(values) = query_hash.get("param3") {
                                     values.as_slice()
                                 } else {
                                     &[]
@@ -271,18 +328,6 @@ mod tests {
                 #[nails(query)]
                 String,
             );
-        })
-        .unwrap();
-    }
-
-    #[test]
-    #[should_panic(expected = "FromRequest field must have #[nails(query)]")]
-    fn test_derive_missing_query_attr() {
-        derive_from_request2(quote! {
-            #[nails(path = "/api/posts/{id}")]
-            struct GetPostRequest {
-                query1: String,
-            }
         })
         .unwrap();
     }
