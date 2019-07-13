@@ -230,6 +230,77 @@ mod tests {
     }
 
     #[test]
+    fn test_derive_tuple() {
+        assert_ts_eq!(
+            derive_from_request2(quote! {
+                #[nails(path = "/api/posts/{id}")]
+                struct GetPostRequest(
+                    #[nails(query = "param1")]
+                    String,
+                );
+            })
+            .unwrap(),
+            quote! {
+                impl nails::FromRequest for GetPostRequest {
+                    fn path_prefix_hint() -> &'static str { "/api/posts/" }
+                    fn match_path(method: &Method, path: &str) -> bool {
+                        (*method == Method::GET || *method == Method::HEAD) && (
+                            path.starts_with("/") && {
+                                let mut path_iter = path[1..].split("/");
+                                path_iter.next().map(|comp| comp == "api").unwrap_or(false)
+                                    && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
+                                    && path_iter.next().is_some()
+                                    && path_iter.next().is_none()
+                            }
+                        )
+                    }
+                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        Ok(GetPostRequest(
+                            nails::request::FromQuery::from_query(
+                                if let Some(values) = query_hash.get("param1") {
+                                    values.as_slice()
+                                } else {
+                                    &[]
+                                }
+                            ).unwrap(),
+                        ))
+                    }
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_derive_unit() {
+        assert_ts_eq!(
+            derive_from_request2(quote! {
+                #[nails(path = "/ping")]
+                struct PingRequest;
+            })
+            .unwrap(),
+            quote! {
+                impl nails::FromRequest for PingRequest {
+                    fn path_prefix_hint() -> &'static str { "/ping" }
+                    fn match_path(method: &Method, path: &str) -> bool {
+                        (*method == Method::GET || *method == Method::HEAD) && (
+                            path.starts_with("/") && {
+                                let mut path_iter = path[1..].split("/");
+                                path_iter.next().map(|comp| comp == "ping").unwrap_or(false)
+                                    && path_iter.next().is_none()
+                            }
+                        )
+                    }
+                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        Ok(PingRequest)
+                    }
+                }
+            },
+        );
+    }
+
+    #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths() {
         derive_from_request2(quote! {
