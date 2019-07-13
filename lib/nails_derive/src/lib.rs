@@ -320,6 +320,18 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")] or alike")]
+    fn test_derive_missing_field_kind_for_position_field() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest(
+                String,
+            );
+        })
+        .unwrap();
+    }
+
+    #[test]
     #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")]")]
     fn test_derive_missing_query_name_for_position_field() {
         derive_from_request2(quote! {
