@@ -131,6 +131,12 @@ impl FieldKind {
                     "Specify name with #[nails(path = \"\")]",
                 ));
             };
+            if !path_bindings.contains(&path_name) {
+                return Err(syn::Error::new(
+                    path.span,
+                    "This name doesn't exist in the endpoint path",
+                ));
+            }
             return Ok(FieldKind::Path {
                 var: path_name,
             });
@@ -433,6 +439,32 @@ mod tests {
             struct GetPostRequest {
                 #[nails(path = 1)]
                 id: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "This name doesn\\'t exist in the endpoint path")]
+    fn test_derive_non_captured_path_name1() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest {
+                #[nails(path = "idd")]
+                id: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "This name doesn\\'t exist in the endpoint path")]
+    fn test_derive_non_captured_path_name2() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest {
+                #[nails(path)]
+                idd: String,
             }
         })
         .unwrap();
