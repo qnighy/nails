@@ -3,7 +3,7 @@
 
 extern crate proc_macro;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -58,6 +58,27 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     let field_kinds = data.fields.iter().zip(&field_attrs).map(|(field, attrs)| {
         FieldKind::parse_from(field, attrs, path.bindings())
     }).collect::<Result<Vec<_>, _>>()?;
+
+    let _path_fields = {
+        let mut path_fields = HashMap::new();
+        for (idx, field) in data.fields.iter().enumerate() {
+            if let FieldKind::Path { var } = &field_kinds[idx] {
+                if let Some(_dup_field) = path_fields.get(var) {
+                    let span = if let Some(path) = &field_attrs[idx].path {
+                        path.span
+                    } else {
+                        field.span()
+                    };
+                    return Err(syn::Error::new(
+                        span,
+                        "Duplicate path names",
+                    ));
+                }
+                path_fields.insert(var.clone(), field);
+            }
+        }
+        path_fields
+    };
 
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
@@ -412,6 +433,35 @@ mod tests {
             #[nails(path = "/api/posts/{id1}/{id2}")]
             struct GetPostRequest {
                 #[nails(path = "id1", path = "id2")]
+                id: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Duplicate path names")]
+    fn test_derive_duplicate_path_names() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest {
+                #[nails(path)]
+                id: String,
+                #[nails(path = "id")]
+                id2: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Duplicate path names")]
+    fn test_derive_duplicate_path_names2() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest {
+                #[nails(path = "id")]
+                id2: String,
                 id: String,
             }
         })
