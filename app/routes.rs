@@ -42,7 +42,9 @@ async fn index(req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
 
 #[derive(Debug, FromRequest)]
 #[nails(path = "/api/posts/{id}")]
-struct GetPostRequest {}
+struct GetPostRequest {
+    id: u64,
+}
 
 #[derive(Debug, Serialize)]
 struct GetPostBody {

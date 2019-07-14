@@ -49,17 +49,18 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
         .path
         .clone()
         .ok_or_else(|| syn::Error::new(input.span(), "#[nails(path)] is needed"))?;
+    let path_span = path.path.span();
     let path = path
         .path
         .value()
         .parse::<PathPattern>()
-        .map_err(|e| syn::Error::new(path.path.span(), e))?;
+        .map_err(|e| syn::Error::new(path_span, e))?;
 
     let field_kinds = data.fields.iter().zip(&field_attrs).map(|(field, attrs)| {
         FieldKind::parse_from(field, attrs, path.bindings())
     }).collect::<Result<Vec<_>, _>>()?;
 
-    let _path_fields = {
+    let path_fields = {
         let mut path_fields = HashMap::new();
         for (idx, field) in data.fields.iter().enumerate() {
             if let FieldKind::Path { var } = &field_kinds[idx] {
@@ -79,6 +80,14 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
         }
         path_fields
     };
+    for binding in path.bindings() {
+        if !path_fields.contains_key(binding) {
+            return Err(syn::Error::new(
+                path_span,
+                format_args!("Missing field for binding name from {{{}}}", binding),
+            ));
+        }
+    }
 
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
@@ -284,6 +293,8 @@ mod tests {
             derive_from_request2(quote! {
                 #[nails(path = "/api/posts/{id}")]
                 struct GetPostRequest(
+                    #[nails(path = "id")]
+                    String,
                     #[nails(query = "param1")]
                     String,
                 );
@@ -306,6 +317,7 @@ mod tests {
                     fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                         Ok(GetPostRequest(
+                            unimplemented!(),
                             nails::request::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
@@ -516,6 +528,16 @@ mod tests {
                 #[nails(path)]
                 idd: String,
             }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Missing field for binding name from {id}")]
+    fn test_derive_missing_path_names() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest;
         })
         .unwrap();
     }

@@ -1,0 +1,5 @@
+error: Missing field for binding name from {id}
+ --> $DIR/from-request-missing-path-names.rs:4:16
+  |
+4 | #[nails(path = "/api/posts/{id}")]
+  |                ^^^^^^^^^^^^^^^^^
