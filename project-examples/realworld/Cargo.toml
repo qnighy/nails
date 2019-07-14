@@ -1,5 +1,5 @@
 [package]
-name = "sayho"
+name = "nails-realworld"
 version = "0.1.0"
 authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 edition = "2018"
@@ -16,5 +16,5 @@ structopt = "0.2.16"
 nails = { path = "../../lib/nails" }
 
 [[bin]]
-name = "sayho"
+name = "realworld"
 path = "app/main.rs"
