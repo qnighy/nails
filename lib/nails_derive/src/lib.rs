@@ -1,4 +1,4 @@
-#![recursion_limit = "128"]
+#![recursion_limit = "256"]
 #![cfg_attr(feature = "proc_macro_diagnostics", feature(proc_macro_diagnostics))]
 
 extern crate proc_macro;
@@ -93,9 +93,10 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
 
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path }, &path_fields);
+    let (path_extractor, path_vars) = path.gen_path_extractor(quote! { path }, &path_fields);
 
     let construct = data.fields.try_construct(&input.ident, |field, idx| {
-        field_kinds[idx].gen_parser(field)
+        field_kinds[idx].gen_parser(field, &path_vars)
     })?;
 
     let name = &input.ident;
@@ -112,6 +113,8 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
 
             fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                 let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                let path = req.uri().path();
+                #path_extractor
                 Ok(#construct)
             }
         }
@@ -187,10 +190,11 @@ impl FieldKind {
         }
     }
 
-    fn gen_parser(&self, _field: &syn::Field) -> syn::Result<TokenStream> {
+    fn gen_parser(&self, _field: &syn::Field, path_vars: &HashMap<String, syn::Ident>) -> syn::Result<TokenStream> {
         Ok(match self {
-            FieldKind::Path { var: _var } => quote! {
-                unimplemented!() // TODO: handle paths
+            FieldKind::Path { var } => {
+                let path_var = &path_vars[var];
+                quote! { #path_var }
             },
             FieldKind::Query { name } => quote! {
                 nails::request::FromQuery::from_query(
@@ -243,8 +247,15 @@ mod tests {
                     }
                     fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        let path = req.uri().path();
+                        let mut path_iter = path[1..].split("/");
+                        path_iter.next();
+                        path_iter.next();
+                        let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                            path_iter.next().expect("internal error: invalid path given")
+                        ).expect("internal error: invalid path given");
                         Ok(GetPostRequest {
-                            id: unimplemented!(),
+                            id: pathcomp_id,
                             param1: nails::request::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
@@ -316,8 +327,15 @@ mod tests {
                     }
                     fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        let path = req.uri().path();
+                        let mut path_iter = path[1..].split("/");
+                        path_iter.next();
+                        path_iter.next();
+                        let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                            path_iter.next().expect("internal error: invalid path given")
+                        ).expect("internal error: invalid path given");
                         Ok(GetPostRequest(
-                            unimplemented!(),
+                            pathcomp_id,
                             nails::request::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
@@ -354,6 +372,9 @@ mod tests {
                     }
                     fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        let path = req.uri().path();
+                        let mut path_iter = path[1..].split("/");
+                        path_iter.next();
                         Ok(PingRequest)
                     }
                 }

@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::str::FromStr;
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 
 // TODO: support recursive glob like `/admin/sidekiq/{path*}`
@@ -52,11 +52,42 @@ impl PathPattern {
             .collect::<TokenStream>();
         quote! {(
             #path.starts_with("/") && {
-                let mut path_iter = path[1..].split("/");
+                let mut path_iter = #path[1..].split("/");
                 #conditions
                 path_iter.next().is_none()
             }
         )}
+    }
+
+    pub(crate) fn gen_path_extractor(&self, path: TokenStream, fields: &HashMap<String, &syn::Field>) -> (TokenStream, HashMap<String, syn::Ident>) {
+        let mut vars = HashMap::new();
+        let extractors = self
+            .components
+            .iter()
+            .map(|comp| match comp {
+                ComponentMatcher::String(_) => {
+                    quote! {
+                        path_iter.next();
+                    }
+                }
+                ComponentMatcher::Var(var) => {
+                    let var_ident = format!("pathcomp_{}", var);
+                    let var_ident = syn::Ident::new(&var_ident, Span::call_site());
+                    vars.insert(var.clone(), var_ident.clone());
+                    let field_ty = &fields[var].ty;
+                    quote! {
+                        let #var_ident = <#field_ty as nails::request::FromPath>::from_path(
+                            path_iter.next().expect("internal error: invalid path given")
+                        ).expect("internal error: invalid path given");
+                    }
+                }
+            })
+            .collect::<TokenStream>();
+        let extractor = quote! {
+            let mut path_iter = #path[1..].split("/");
+            #extractors
+        };
+        (extractor, vars)
     }
 
     pub(crate) fn bindings(&self) -> &HashSet<String> {
@@ -252,6 +283,40 @@ mod tests {
                 })
             },
         );
+    }
+
+    #[test]
+    fn test_gen_path_extractor() {
+        let parse = <PathPattern as FromStr>::from_str;
+        let parse = |s| parse(s).unwrap();
+
+        let (extractor, vars) = parse("/").gen_path_extractor(quote! { path }, &hash![]);
+        assert_ts_eq!(
+            extractor,
+            quote! {
+                let mut path_iter = path[1..].split("/");
+                path_iter.next();
+            },
+        );
+        assert_eq!(vars.len(), 0);
+
+        let field = syn::Field::parse_named.parse2(quote! { id: String }).unwrap();
+        let (extractor, vars) = parse("/api/posts/{id}").gen_path_extractor(quote! { path }, &hash![
+            (S("id"), &field),
+        ]);
+        assert_ts_eq!(
+            extractor,
+            quote! {
+                let mut path_iter = path[1..].split("/");
+                path_iter.next();
+                path_iter.next();
+                let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                    path_iter.next().expect("internal error: invalid path given")
+                ).expect("internal error: invalid path given");
+            },
+        );
+        assert_eq!(vars.len(), 1);
+        assert_eq!(vars["id"], "pathcomp_id");
     }
 
     #[test]
