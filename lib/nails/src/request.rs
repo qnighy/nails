@@ -18,6 +18,36 @@ pub trait FromRequest: Sized {
     fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
 }
 
+pub trait FromPath: Sized {
+    fn from_path(path_component: &str) -> Result<Self, ()>;
+
+    fn matches(path_component: &str) -> bool {
+        Self::from_path(path_component).is_ok()
+    }
+}
+
+impl FromPath for String {
+    fn from_path(path_component: &str) -> Result<Self, ()> {
+        Ok(path_component.to_owned())
+    }
+    fn matches(_path_component: &str) -> bool {
+        true
+    }
+}
+
+macro_rules! from_path_int_matcher {
+    ($($int:ty)*) => {
+        $(
+            impl FromPath for $int {
+                fn from_path(path_component: &str) -> Result<Self, ()> {
+                    path_component.parse::<$int>().map_err(|_| ())
+                }
+            }
+        )*
+    };
+}
+from_path_int_matcher!(u8 u16 u32 u64 u128 i8 i16 i32 i64 i128);
+
 pub trait FromQuery: Sized {
     // TODO: Result
     fn from_query(values: &[String]) -> Result<Self, ()>;
@@ -144,6 +174,25 @@ mod tests {
         ($($e:expr,)*) => {
             vec![$($e,)*].into_iter().collect::<std::collections::HashMap<_, _>>()
         };
+    }
+
+    #[test]
+    fn test_from_path() {
+        assert_eq!(String::from_path("%20あ"), Ok(S("%20あ")));
+        assert_eq!(i32::from_path("20"), Ok(20));
+        assert_eq!(i32::from_path("08"), Ok(8));
+        assert_eq!(i32::from_path("-2"), Ok(-2));
+        assert_eq!(i32::from_path(" 5"), Err(()));
+        assert_eq!(i8::from_path("200"), Err(()));
+        assert_eq!(u32::from_path("-1"), Err(()));
+
+        assert!(String::matches("%20あ"));
+        assert!(i32::matches("20"));
+        assert!(i32::matches("08"));
+        assert!(i32::matches("-2"));
+        assert!(!i32::matches(" 5"));
+        assert!(!i8::matches("200"));
+        assert!(!u32::matches("-1"));
     }
 
     #[test]
