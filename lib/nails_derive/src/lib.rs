@@ -41,9 +41,11 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
         ));
     };
     let attrs = StructAttrs::parse(&input.attrs)?;
-    let field_attrs = data.fields.iter().map(|field| {
-        FieldAttrs::parse(&field.attrs)
-    }).collect::<Result<Vec<_>, _>>()?;
+    let field_attrs = data
+        .fields
+        .iter()
+        .map(|field| FieldAttrs::parse(&field.attrs))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let path = attrs
         .path
@@ -56,9 +58,12 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
         .parse::<PathPattern>()
         .map_err(|e| syn::Error::new(path_span, e))?;
 
-    let field_kinds = data.fields.iter().zip(&field_attrs).map(|(field, attrs)| {
-        FieldKind::parse_from(field, attrs, path.bindings())
-    }).collect::<Result<Vec<_>, _>>()?;
+    let field_kinds = data
+        .fields
+        .iter()
+        .zip(&field_attrs)
+        .map(|(field, attrs)| FieldKind::parse_from(field, attrs, path.bindings()))
+        .collect::<Result<Vec<_>, _>>()?;
 
     let path_fields = {
         let mut path_fields = HashMap::new();
@@ -70,10 +75,7 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
                     } else {
                         field.span()
                     };
-                    return Err(syn::Error::new(
-                        span,
-                        "Duplicate path names",
-                    ));
+                    return Err(syn::Error::new(span, "Duplicate path names"));
                 }
                 path_fields.insert(var.clone(), field);
             }
@@ -92,9 +94,9 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     let path_prefix = path.path_prefix();
     let path_condition = path.gen_path_condition(quote! { path });
 
-    let construct = data
-        .fields
-        .try_construct(&input.ident, |field, idx| field_kinds[idx].gen_parser(field))?;
+    let construct = data.fields.try_construct(&input.ident, |field, idx| {
+        field_kinds[idx].gen_parser(field)
+    })?;
 
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
@@ -118,16 +120,16 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
 
 #[derive(Debug)]
 enum FieldKind {
-    Path {
-        var: String,
-    },
-    Query {
-        name: String,
-    },
+    Path { var: String },
+    Query { name: String },
 }
 
 impl FieldKind {
-    fn parse_from(field: &syn::Field, attrs: &FieldAttrs, path_bindings: &HashSet<String>) -> syn::Result<FieldKind> {
+    fn parse_from(
+        field: &syn::Field,
+        attrs: &FieldAttrs,
+        path_bindings: &HashSet<String>,
+    ) -> syn::Result<FieldKind> {
         if let Some(query) = &attrs.query {
             if attrs.path.is_some() {
                 return Err(syn::Error::new(
@@ -145,9 +147,7 @@ impl FieldKind {
                     "Specify name with #[nails(query = \"\")]",
                 ));
             };
-            return Ok(FieldKind::Query {
-                name: query_name,
-            });
+            return Ok(FieldKind::Query { name: query_name });
         }
 
         if let Some(path) = &attrs.path {
@@ -167,27 +167,23 @@ impl FieldKind {
                     "This name doesn't exist in the endpoint path",
                 ));
             }
-            return Ok(FieldKind::Path {
-                var: path_name,
-            });
+            return Ok(FieldKind::Path { var: path_name });
         }
 
         // ident-based fallback
-        let ident = field.ident.as_ref().ok_or_else(|| syn::Error::new(
-            field.span(),
-            "Specify name with #[nails(query = \"\")] or alike",
-        ))?;
+        let ident = field.ident.as_ref().ok_or_else(|| {
+            syn::Error::new(
+                field.span(),
+                "Specify name with #[nails(query = \"\")] or alike",
+            )
+        })?;
         let ident_name = ident.to_string();
         if path_bindings.contains(&ident_name) {
             // fallback to path
-            Ok(FieldKind::Path {
-                var: ident_name,
-            })
+            Ok(FieldKind::Path { var: ident_name })
         } else {
             // fallback to query
-            Ok(FieldKind::Query {
-                name: ident_name,
-            })
+            Ok(FieldKind::Query { name: ident_name })
         }
     }
 

@@ -117,7 +117,10 @@ pub(crate) struct FieldAttrs {
 
 impl FieldAttrs {
     pub(crate) fn parse(attrs: &[Attribute]) -> syn::Result<Self> {
-        let mut ret = Self { query: None, path: None };
+        let mut ret = Self {
+            query: None,
+            path: None,
+        };
         for attr in attrs {
             if !attr.path.is_ident("nails") {
                 continue;
