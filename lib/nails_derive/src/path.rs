@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::str::FromStr;
 
@@ -30,7 +30,7 @@ impl PathPattern {
         prefix
     }
 
-    pub(crate) fn gen_path_condition(&self, path: TokenStream) -> TokenStream {
+    pub(crate) fn gen_path_condition(&self, path: TokenStream, fields: &HashMap<String, &syn::Field>) -> TokenStream {
         let conditions = self
             .components
             .iter()
@@ -40,9 +40,12 @@ impl PathPattern {
                         path_iter.next().map(|comp| comp == #s).unwrap_or(false) &&
                     }
                 }
-                ComponentMatcher::Var(_) => {
+                ComponentMatcher::Var(var) => {
+                    let field_ty = &fields[var].ty;
                     quote! {
-                        path_iter.next().is_some() &&
+                        path_iter.next().map(|comp| {
+                            <#field_ty as nails::request::FromPath>::matches(comp)
+                        }).unwrap_or(false) &&
                     }
                 }
             })
@@ -176,8 +179,17 @@ fn is_ident(s: &str) -> bool {
 mod tests {
     use super::*;
 
+    use syn::parse::Parser;
     use crate::assert_ts_eq;
 
+    macro_rules! hash {
+        [$($e:expr),*] => {
+            vec![$($e,)*].into_iter().collect::<HashMap<_, _>>()
+        };
+        [$($e:expr)*,] => {
+            vec![$($e,)*].into_iter().collect::<HashMap<_, _>>()
+        };
+    }
     macro_rules! hash_set {
         [$($e:expr),*] => {
             vec![$($e,)*].into_iter().collect::<HashSet<_>>()
@@ -213,7 +225,7 @@ mod tests {
         let parse = <PathPattern as FromStr>::from_str;
         let parse = |s| parse(s).unwrap();
         assert_ts_eq!(
-            parse("/").gen_path_condition(quote! { path }),
+            parse("/").gen_path_condition(quote! { path }, &hash![]),
             quote! {
                 (path.starts_with("/") && {
                     let mut path_iter = path[1..].split("/");
@@ -223,14 +235,19 @@ mod tests {
             },
         );
 
+        let field = syn::Field::parse_named.parse2(quote! { id: String }).unwrap();
         assert_ts_eq!(
-            parse("/api/posts/{id}").gen_path_condition(quote! { path }),
+            parse("/api/posts/{id}").gen_path_condition(quote! { path }, &hash![
+                (S("id"), &field),
+            ]),
             quote! {
                 (path.starts_with("/") && {
                     let mut path_iter = path[1..].split("/");
                     path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                         && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
-                        && path_iter.next().is_some()
+                        && path_iter.next().map(|comp| {
+                            <String as nails::request::FromPath>::matches(comp)
+                        }).unwrap_or(false)
                         && path_iter.next().is_none()
                 })
             },

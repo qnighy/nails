@@ -92,7 +92,7 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     }
 
     let path_prefix = path.path_prefix();
-    let path_condition = path.gen_path_condition(quote! { path });
+    let path_condition = path.gen_path_condition(quote! { path }, &path_fields);
 
     let construct = data.fields.try_construct(&input.ident, |field, idx| {
         field_kinds[idx].gen_parser(field)
@@ -234,7 +234,9 @@ mod tests {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                                     && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
-                                    && path_iter.next().is_some()
+                                    && path_iter.next().map(|comp| {
+                                        <String as nails::request::FromPath>::matches(comp)
+                                    }).unwrap_or(false)
                                     && path_iter.next().is_none()
                             }
                         )
@@ -305,7 +307,9 @@ mod tests {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                                     && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
-                                    && path_iter.next().is_some()
+                                    && path_iter.next().map(|comp| {
+                                        <String as nails::request::FromPath>::matches(comp)
+                                    }).unwrap_or(false)
                                     && path_iter.next().is_none()
                             }
                         )
