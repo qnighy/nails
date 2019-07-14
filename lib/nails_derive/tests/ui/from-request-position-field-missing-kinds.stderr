@@ -1,0 +1,5 @@
+error: Specify name with #[nails(query = "")] or alike
+ --> $DIR/from-request-position-field-missing-kinds.rs:6:5
+  |
+6 |     String,
+  |     ^^^^^^

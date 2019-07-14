@@ -15,4 +15,11 @@ pub struct GetPostRequest2 {
     query1: String,
 }
 
+#[derive(FromRequest)]
+#[nails(path = "/api/posts/{id1}/{id2}")]
+pub struct GetPostRequest3 {
+    #[nails(path = "id1", path = "id2")]
+    id: String,
+}
+
 fn main() {}

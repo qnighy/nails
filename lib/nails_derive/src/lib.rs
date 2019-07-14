@@ -99,6 +99,12 @@ enum FieldKind {
 impl FieldKind {
     fn parse_from(field: &syn::Field, attrs: &FieldAttrs, path_bindings: &HashSet<String>) -> syn::Result<FieldKind> {
         if let Some(query) = &attrs.query {
+            if attrs.path.is_some() {
+                return Err(syn::Error::new(
+                    query.span,
+                    "Cannot have both #[nails(query)] and #[nails(path)]",
+                ));
+            }
             let query_name = if let Some(query_name) = &query.name {
                 query_name.value()
             } else if let Some(ident) = &field.ident {
@@ -111,6 +117,22 @@ impl FieldKind {
             };
             return Ok(FieldKind::Query {
                 name: query_name,
+            });
+        }
+
+        if let Some(path) = &attrs.path {
+            let path_name = if let Some(path_name) = &path.name {
+                path_name.value()
+            } else if let Some(ident) = &field.ident {
+                ident.to_string()
+            } else {
+                return Err(syn::Error::new(
+                    path.span,
+                    "Specify name with #[nails(path = \"\")]",
+                ));
+            };
+            return Ok(FieldKind::Path {
+                var: path_name,
             });
         }
 
@@ -378,6 +400,19 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "multiple #[nails(path)] definitions")]
+    fn test_derive_double_path_kinds() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id1}/{id2}")]
+            struct GetPostRequest {
+                #[nails(path = "id1", path = "id2")]
+                id: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
     #[should_panic(expected = "string value or no value expected in #[nails(query)]")]
     fn test_derive_integer_query_name() {
         derive_from_request2(quote! {
@@ -385,6 +420,19 @@ mod tests {
             struct GetPostRequest {
                 #[nails(query = 1)]
                 query1: String,
+            }
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "string value or no value expected in #[nails(path)]")]
+    fn test_derive_integer_path_name() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest {
+                #[nails(path = 1)]
+                id: String,
             }
         })
         .unwrap();
@@ -409,6 +457,19 @@ mod tests {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest(
                 #[nails(query)]
+                String,
+            );
+        })
+        .unwrap();
+    }
+
+    #[test]
+    #[should_panic(expected = "Specify name with #[nails(path = \\\"\\\")]")]
+    fn test_derive_missing_path_name_for_position_field() {
+        derive_from_request2(quote! {
+            #[nails(path = "/api/posts/{id}")]
+            struct GetPostRequest(
+                #[nails(path)]
                 String,
             );
         })

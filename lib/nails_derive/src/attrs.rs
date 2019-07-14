@@ -112,11 +112,12 @@ pub(crate) struct PathInfo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FieldAttrs {
     pub(crate) query: Option<QueryFieldInfo>,
+    pub(crate) path: Option<PathFieldInfo>,
 }
 
 impl FieldAttrs {
     pub(crate) fn parse(attrs: &[Attribute]) -> syn::Result<Self> {
-        let mut ret = Self { query: None };
+        let mut ret = Self { query: None, path: None };
         for attr in attrs {
             if !attr.path.is_ident("nails") {
                 continue;
@@ -160,6 +161,8 @@ impl FieldAttrs {
         let name = meta.name();
         if name == "query" {
             self.parse_query(meta)
+        } else if name == "path" {
+            self.parse_path(meta)
         } else {
             return Err(syn::Error::new(
                 meta.span(),
@@ -197,6 +200,36 @@ impl FieldAttrs {
         self.query = Some(QueryFieldInfo { name: lit, span });
         Ok(())
     }
+
+    fn parse_path(&mut self, meta: &Meta) -> syn::Result<()> {
+        let (lit, span) = match meta {
+            Meta::Word(ident) => (None, ident.span()),
+            Meta::List(list) => {
+                return Err(syn::Error::new(
+                    list.paren_token.span,
+                    "extra parentheses in #[nails(path)]",
+                ));
+            }
+            Meta::NameValue(nv) => {
+                if let Lit::Str(lit) = &nv.lit {
+                    (Some(lit.clone()), nv.span())
+                } else {
+                    return Err(syn::Error::new(
+                        nv.lit.span(),
+                        "string value or no value expected in #[nails(path)]",
+                    ));
+                }
+            }
+        };
+        if self.path.is_some() {
+            return Err(syn::Error::new(
+                lit.span(),
+                "multiple #[nails(path)] definitions",
+            ));
+        }
+        self.path = Some(PathFieldInfo { name: lit, span });
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -211,3 +244,16 @@ impl PartialEq for QueryFieldInfo {
     }
 }
 impl Eq for QueryFieldInfo {}
+
+#[derive(Debug, Clone)]
+pub(crate) struct PathFieldInfo {
+    pub(crate) name: Option<LitStr>,
+    pub(crate) span: Span,
+}
+
+impl PartialEq for PathFieldInfo {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+impl Eq for PathFieldInfo {}

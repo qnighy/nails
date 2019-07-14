@@ -9,3 +9,9 @@ error: multiple #[nails(query)] definitions
    |
 14 |     #[nails(query = "query1rename", query = "query1renamerename")]
    |                                             ^^^^^^^^^^^^^^^^^^^^
+
+error: multiple #[nails(path)] definitions
+  --> $DIR/from-request-double-queries.rs:21:34
+   |
+21 |     #[nails(path = "id1", path = "id2")]
+   |                                  ^^^^^
