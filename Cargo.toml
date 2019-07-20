@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "project-examples/realworld",
+    "lib/contextful",
     "lib/nails",
     "lib/nails_derive",
 ]
