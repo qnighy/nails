@@ -25,6 +25,14 @@ pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body
             .body(Body::from("Not Found"))
             .unwrap()
     };
+    let resp = {
+        let mut resp = resp;
+        // CORS hack.
+        // TODO: move this out to middleware
+        resp.headers_mut()
+            .append("Access-Control-Allow-Origin", "*".parse().unwrap());
+        resp
+    };
     Ok(resp)
 }
 
