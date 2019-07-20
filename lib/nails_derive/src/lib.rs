@@ -190,12 +190,16 @@ impl FieldKind {
         }
     }
 
-    fn gen_parser(&self, _field: &syn::Field, path_vars: &HashMap<String, syn::Ident>) -> syn::Result<TokenStream> {
+    fn gen_parser(
+        &self,
+        _field: &syn::Field,
+        path_vars: &HashMap<String, syn::Ident>,
+    ) -> syn::Result<TokenStream> {
         Ok(match self {
             FieldKind::Path { var } => {
                 let path_var = &path_vars[var];
                 quote! { #path_var }
-            },
+            }
             FieldKind::Query { name } => quote! {
                 nails::request::FromQuery::from_query(
                     if let Some(values) = query_hash.get(#name) {

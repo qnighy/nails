@@ -30,7 +30,11 @@ impl PathPattern {
         prefix
     }
 
-    pub(crate) fn gen_path_condition(&self, path: TokenStream, fields: &HashMap<String, &syn::Field>) -> TokenStream {
+    pub(crate) fn gen_path_condition(
+        &self,
+        path: TokenStream,
+        fields: &HashMap<String, &syn::Field>,
+    ) -> TokenStream {
         let conditions = self
             .components
             .iter()
@@ -59,7 +63,11 @@ impl PathPattern {
         )}
     }
 
-    pub(crate) fn gen_path_extractor(&self, path: TokenStream, fields: &HashMap<String, &syn::Field>) -> (TokenStream, HashMap<String, syn::Ident>) {
+    pub(crate) fn gen_path_extractor(
+        &self,
+        path: TokenStream,
+        fields: &HashMap<String, &syn::Field>,
+    ) -> (TokenStream, HashMap<String, syn::Ident>) {
         let mut vars = HashMap::new();
         let extractors = self
             .components
@@ -210,8 +218,8 @@ fn is_ident(s: &str) -> bool {
 mod tests {
     use super::*;
 
-    use syn::parse::Parser;
     use crate::assert_ts_eq;
+    use syn::parse::Parser;
 
     macro_rules! hash {
         [$($e:expr),*] => {
@@ -266,11 +274,12 @@ mod tests {
             },
         );
 
-        let field = syn::Field::parse_named.parse2(quote! { id: String }).unwrap();
+        let field = syn::Field::parse_named
+            .parse2(quote! { id: String })
+            .unwrap();
         assert_ts_eq!(
-            parse("/api/posts/{id}").gen_path_condition(quote! { path }, &hash![
-                (S("id"), &field),
-            ]),
+            parse("/api/posts/{id}")
+                .gen_path_condition(quote! { path }, &hash![(S("id"), &field),]),
             quote! {
                 (path.starts_with("/") && {
                     let mut path_iter = path[1..].split("/");
@@ -300,10 +309,11 @@ mod tests {
         );
         assert_eq!(vars.len(), 0);
 
-        let field = syn::Field::parse_named.parse2(quote! { id: String }).unwrap();
-        let (extractor, vars) = parse("/api/posts/{id}").gen_path_extractor(quote! { path }, &hash![
-            (S("id"), &field),
-        ]);
+        let field = syn::Field::parse_named
+            .parse2(quote! { id: String })
+            .unwrap();
+        let (extractor, vars) = parse("/api/posts/{id}")
+            .gen_path_extractor(quote! { path }, &hash![(S("id"), &field),]);
         assert_ts_eq!(
             extractor,
             quote! {
