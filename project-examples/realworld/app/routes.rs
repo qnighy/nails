@@ -1,5 +1,5 @@
 use hyper::{Body, Method, Request, Response, StatusCode};
-use serde_derive::Serialize;
+use serde::Serialize;
 
 use nails::response::ErrorResponse;
 use nails::{FromRequest, Routable, Router};
@@ -64,9 +64,7 @@ async fn get_post(_req: GetPostRequest) -> Result<Response<Body>, ErrorResponse>
             body: String::from("foo"),
         },
     };
-    Ok(Response::new(Body::from(
-        serde_json::to_string(&body).unwrap(),
-    )))
+    Ok(json_response(&body))
 }
 
 #[derive(Debug, FromRequest)]
@@ -82,9 +80,7 @@ async fn list_tags(_req: ListTagsRequest) -> Result<Response<Body>, ErrorRespons
     let body = ListTagsResponseBody {
         tags: vec![String::from("tag1"), String::from("tag2")],
     };
-    Ok(Response::new(Body::from(
-        serde_json::to_string(&body).unwrap(),
-    )))
+    Ok(json_response(&body))
 }
 
 #[derive(Debug, FromRequest)]
@@ -126,9 +122,7 @@ async fn list_articles(_req: ListArticlesRequest) -> Result<Response<Body>, Erro
         articles_count: articles.len() as u64,
         articles,
     };
-    Ok(Response::new(Body::from(
-        serde_json::to_string(&body).unwrap(),
-    )))
+    Ok(json_response(&body))
 }
 
 #[derive(Debug, Serialize)]
@@ -152,4 +146,11 @@ struct Profile {
     bio: String,
     image: String,
     following: bool,
+}
+
+fn json_response<T: Serialize>(body: &T) -> Response<Body> {
+    Response::builder()
+        .header("Content-Type", "application/json")
+        .body(Body::from(serde_json::to_string(&body).unwrap()))
+        .unwrap()
 }

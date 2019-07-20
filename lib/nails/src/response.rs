@@ -1,6 +1,6 @@
 use failure::Fail;
 use hyper::{Body, Response, StatusCode};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
 pub struct ErrorResponse {
