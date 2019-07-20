@@ -4,7 +4,9 @@ use serde::Serialize;
 use nails::response::ErrorResponse;
 use nails::{FromRequest, Routable, Router};
 
-pub(crate) async fn route(req: Request<Body>) -> failure::Fallible<Response<Body>> {
+use crate::context::AppCtx;
+
+pub(crate) async fn route(_ctx: &AppCtx, req: Request<Body>) -> failure::Fallible<Response<Body>> {
     let router = {
         let mut router = Router::new();
         router.add_function_route(index);

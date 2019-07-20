@@ -8,6 +8,9 @@ use hyper::service::service_fn;
 use hyper::Server;
 use runtime::net::TcpListener;
 
+use crate::context::AppCtx;
+
+mod context;
 mod routes;
 
 #[derive(Debug, Clone, StructOpt)]
@@ -25,9 +28,10 @@ enum SubcommandOpt {
 #[runtime::main]
 async fn main() -> failure::Fallible<()> {
     let opt = CommandOpt::from_args();
+    let ctx = AppCtx::new();
     match opt.subcommand {
         SubcommandOpt::ServerCommandOpt(ref server_opt) => {
-            server(server_opt).await?;
+            server(&ctx, server_opt).await?;
         }
     }
     Ok(())
@@ -39,8 +43,17 @@ pub(crate) struct ServerCommandOpt {
     port: Option<u16>,
 }
 
-pub(crate) async fn server(opt: &ServerCommandOpt) -> failure::Fallible<()> {
-    let new_svc = || service_fn(|req| crate::routes::route(req).boxed().compat());
+pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fallible<()> {
+    let ctx2 = ctx.clone();
+    let new_svc = move || {
+        let ctx = ctx2.clone();
+        service_fn(move |req| {
+            let ctx = ctx.clone();
+            async move { crate::routes::route(&ctx, req).await }
+                .boxed()
+                .compat()
+        })
+    };
 
     let mut listener = TcpListener::bind(("127.0.0.1", opt.port.unwrap_or(3000)))?;
     println!("Listening on {}", listener.local_addr()?);

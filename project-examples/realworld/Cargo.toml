@@ -13,6 +13,7 @@ hyper = { version = "0.12.30", default-features = false }
 runtime = "=0.3.0-alpha.6"
 structopt = "0.2.16"
 nails = { path = "../../lib/nails" }
+contextful = { path = "../../lib/contextful" }
 
 [[bin]]
 name = "realworld"

@@ -528,6 +528,7 @@ dependencies = [
 name = "nails-realworld"
 version = "0.1.0"
 dependencies = [
+ "contextful 0.1.0",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-preview 0.3.0-alpha.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.30 (registry+https://github.com/rust-lang/crates.io-index)",
