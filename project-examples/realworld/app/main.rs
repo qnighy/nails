@@ -3,8 +3,7 @@
 use structopt::StructOpt;
 
 use futures::compat::{Compat, Future01CompatExt};
-use futures::{FutureExt, TryFutureExt, TryStreamExt};
-use hyper::service::service_fn;
+use futures::TryStreamExt;
 use hyper::Server;
 use runtime::net::TcpListener;
 
@@ -44,16 +43,7 @@ pub(crate) struct ServerCommandOpt {
 }
 
 pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fallible<()> {
-    let ctx2 = ctx.clone();
-    let new_svc = move || {
-        let ctx = ctx2.clone();
-        service_fn(move |req| {
-            let ctx = ctx.clone();
-            async move { crate::routes::route(&ctx, req).await }
-                .boxed()
-                .compat()
-        })
-    };
+    let svc = crate::routes::build_route(ctx);
 
     let mut listener = TcpListener::bind(("127.0.0.1", opt.port.unwrap_or(3000)))?;
     println!("Listening on {}", listener.local_addr()?);
@@ -62,7 +52,7 @@ pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fal
 
     let server = Server::builder(incoming)
         .executor(Compat::new(Runtime))
-        .serve(new_svc)
+        .serve(svc)
         .compat();
 
     server.await?;

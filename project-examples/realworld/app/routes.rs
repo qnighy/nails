@@ -1,41 +1,18 @@
-use hyper::{Body, Method, Request, Response, StatusCode};
+use hyper::{Body, Method, Request, Response};
 use serde::Serialize;
 
 use nails::response::ErrorResponse;
-use nails::{FromRequest, Routable, Router};
+use nails::{FromRequest, Service};
 
 use crate::context::AppCtx;
 
-pub(crate) async fn route(_ctx: &AppCtx, req: Request<Body>) -> failure::Fallible<Response<Body>> {
-    let router = {
-        let mut router = Router::new();
-        router.add_function_route(index);
-        router.add_function_route(get_post);
-        router.add_function_route(list_tags);
-        router.add_function_route(list_articles);
-        router
-    };
-
-    let resp = if router.match_path(req.method(), req.uri().path()) {
-        match router.respond(req).await {
-            Ok(resp) => resp,
-            Err(e) => e.to_response(),
-        }
-    } else {
-        Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Body::from("Not Found"))
-            .unwrap()
-    };
-    let resp = {
-        let mut resp = resp;
-        // CORS hack.
-        // TODO: move this out to middleware
-        resp.headers_mut()
-            .append("Access-Control-Allow-Origin", "*".parse().unwrap());
-        resp
-    };
-    Ok(resp)
+pub fn build_route(ctx: &AppCtx) -> Service<AppCtx> {
+    Service::builder()
+        .add_function_route(index)
+        .add_function_route(get_post)
+        .add_function_route(list_tags)
+        .add_function_route(list_articles)
+        .finish(ctx)
 }
 
 #[derive(Debug, FromRequest)]

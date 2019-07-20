@@ -10,7 +10,7 @@ use crate::request::FromRequest;
 use crate::response::ErrorResponse;
 
 pub struct Router {
-    routes: Vec<Box<dyn Routable + Send + 'static>>,
+    routes: Vec<Box<dyn Routable + Send + Sync + 'static>>,
 }
 
 impl Router {
@@ -20,14 +20,14 @@ impl Router {
 
     pub fn add_route<R>(&mut self, route: R)
     where
-        R: Routable + Send + 'static,
+        R: Routable + Send + Sync + 'static,
     {
         self.routes.push(Box::new(route));
     }
 
     pub fn add_function_route<F, Fut, Req>(&mut self, route: F)
     where
-        F: Fn(Req) -> Fut + Send + 'static,
+        F: Fn(Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
         Req: FromRequest + 'static,
     {
