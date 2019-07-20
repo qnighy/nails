@@ -15,3 +15,5 @@ error: string value expected in #[nails(path)]
    |
 12 | #[nails(path)]
    |         ^^^^
+
+error: Could not compile `nails_derive-tests`.

@@ -3,3 +3,5 @@ error: Missing field for binding name from {id}
   |
 4 | #[nails(path = "/api/posts/{id}")]
   |                ^^^^^^^^^^^^^^^^^
+
+error: Could not compile `nails_derive-tests`.

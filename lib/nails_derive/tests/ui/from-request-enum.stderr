@@ -3,3 +3,5 @@ error: FromRequest cannot be derived for enums or unions
   |
 4 | #[nails(path = "/api/posts/{id}")]
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Could not compile `nails_derive-tests`.

@@ -3,3 +3,5 @@ error: Specify name with #[nails(query = "")] or alike
   |
 6 |     String,
   |     ^^^^^^
+
+error: Could not compile `nails_derive-tests`.

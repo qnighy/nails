@@ -15,3 +15,5 @@ error: multiple #[nails(path)] definitions
    |
 21 |     #[nails(path = "id1", path = "id2")]
    |                                  ^^^^^
+
+error: Could not compile `nails_derive-tests`.
