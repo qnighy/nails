@@ -1,6 +1,5 @@
 use futures::prelude::*;
 
-use std::marker::PhantomData;
 use std::sync::Arc;
 
 use contextful::Context;
@@ -96,7 +95,6 @@ where
         Self {
             inner: Some(ServiceInner {
                 router: Router::new(),
-                _marker: PhantomData,
             }),
         }
     }
@@ -135,12 +133,17 @@ where
 }
 
 #[derive(Debug)]
-struct ServiceInner<Ctx: Context> {
-    router: Router,
-    _marker: PhantomData<fn(Ctx)>,
+struct ServiceInner<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
+    router: Router<Ctx>,
 }
 
-impl<Ctx: Context> ServiceInner<Ctx> {
+impl<Ctx> ServiceInner<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
     async fn respond(
         &self,
         _ctx: &Ctx,

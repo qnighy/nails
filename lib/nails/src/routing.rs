@@ -4,18 +4,29 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::pin::Pin;
 
+use contextful::Context;
 use hyper::{Body, Method, Request, Response};
 
 use crate::request::FromRequest;
 use crate::response::ErrorResponse;
 
-pub struct Router {
+pub struct Router<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
     routes: Vec<Box<dyn Routable + Send + Sync + 'static>>,
+    _marker: PhantomData<fn(Ctx)>,
 }
 
-impl Router {
+impl<Ctx> Router<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
     pub fn new() -> Self {
-        Self { routes: Vec::new() }
+        Self {
+            routes: Vec::new(),
+            _marker: PhantomData,
+        }
     }
 
     pub fn add_route<R>(&mut self, route: R)
@@ -35,13 +46,19 @@ impl Router {
     }
 }
 
-impl fmt::Debug for Router {
+impl<Ctx> fmt::Debug for Router<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Router").finish()
     }
 }
 
-impl Routable for Router {
+impl<Ctx> Routable for Router<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
     fn match_path(&self, method: &Method, path: &str) -> bool {
         self.routes
             .iter()
