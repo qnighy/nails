@@ -22,7 +22,7 @@ struct IndexRequest {
     a: Vec<String>,
 }
 
-async fn index(req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
+async fn index(_ctx: AppCtx, req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
     Ok(Response::new(Body::from(format!(
         "Hello, world! {:?}",
         req.a
@@ -45,7 +45,7 @@ struct Post {
     body: String,
 }
 
-async fn get_post(_req: GetPostRequest) -> Result<Response<Body>, ErrorResponse> {
+async fn get_post(_ctx: AppCtx, _req: GetPostRequest) -> Result<Response<Body>, ErrorResponse> {
     let body = GetPostBody {
         post: Post {
             body: String::from("foo"),
@@ -63,7 +63,7 @@ struct ListTagsResponseBody {
     tags: Vec<String>,
 }
 
-async fn list_tags(_req: ListTagsRequest) -> Result<Response<Body>, ErrorResponse> {
+async fn list_tags(_ctx: AppCtx, _req: ListTagsRequest) -> Result<Response<Body>, ErrorResponse> {
     let body = ListTagsResponseBody {
         tags: vec![String::from("tag1"), String::from("tag2")],
     };
@@ -87,7 +87,10 @@ struct ListArticlesResponseBody {
     articles_count: u64,
 }
 
-async fn list_articles(_req: ListArticlesRequest) -> Result<Response<Body>, ErrorResponse> {
+async fn list_articles(
+    _ctx: AppCtx,
+    _req: ListArticlesRequest,
+) -> Result<Response<Body>, ErrorResponse> {
     let articles = vec![Article {
         slug: String::from("slug"),
         title: String::from("title"),

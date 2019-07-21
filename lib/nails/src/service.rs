@@ -123,7 +123,7 @@ where
 
     pub fn add_function_route<F, Fut, Req>(&mut self, route: F) -> &mut Self
     where
-        F: Fn(Req) -> Fut + Send + Sync + 'static,
+        F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
         Req: FromRequest + 'static,
     {

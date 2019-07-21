@@ -38,7 +38,7 @@ where
 
     pub fn add_function_route<F, Fut, Req>(&mut self, route: F)
     where
-        F: Fn(Req) -> Fut + Send + Sync + 'static,
+        F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
         Req: FromRequest + 'static,
     {
@@ -110,7 +110,7 @@ pub struct FunctionRoute<Ctx, F, Req> {
 impl<Ctx, F, Fut, Req> FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Req) -> Fut,
+    F: Fn(Ctx, Req) -> Fut,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
 {
@@ -125,7 +125,7 @@ where
 impl<Ctx, F, Fut, Req> Routable for FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Req) -> Fut,
+    F: Fn(Ctx, Req) -> Fut,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
 {
@@ -141,13 +141,13 @@ where
 
     fn respond(
         &self,
-        _ctx: &Self::Ctx,
+        ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
         let req = match FromRequest::from_request(req) {
             Ok(req) => req,
             Err(e) => return future::err(e).boxed(),
         };
-        (self.f)(req).boxed()
+        (self.f)(ctx.clone(), req).boxed()
     }
 }
