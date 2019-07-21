@@ -14,7 +14,7 @@ pub struct Router<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
-    routes: Vec<Box<dyn Routable + Send + Sync + 'static>>,
+    routes: Vec<Box<dyn Routable<Ctx = Ctx> + Send + Sync + 'static>>,
     _marker: PhantomData<fn(Ctx)>,
 }
 
@@ -31,7 +31,7 @@ where
 
     pub fn add_route<R>(&mut self, route: R)
     where
-        R: Routable + Send + Sync + 'static,
+        R: Routable<Ctx = Ctx> + Send + Sync + 'static,
     {
         self.routes.push(Box::new(route));
     }
@@ -59,6 +59,8 @@ impl<Ctx> Routable for Router<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
+    type Ctx = Ctx;
+
     fn match_path(&self, method: &Method, path: &str) -> bool {
         self.routes
             .iter()
@@ -66,6 +68,7 @@ where
     }
     fn respond(
         &self,
+        ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
         let method = req.method();
@@ -80,11 +83,13 @@ where
                 matched_route = Some(route);
             }
         }
-        matched_route.expect("no route matched").respond(req)
+        matched_route.expect("no route matched").respond(&ctx, req)
     }
 }
 
 pub trait Routable {
+    type Ctx: Context + Send + Sync + 'static;
+
     fn path_prefix_hint(&self) -> &str {
         ""
     }
@@ -92,17 +97,19 @@ pub trait Routable {
     // TODO: Result
     fn respond(
         &self,
+        ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>>;
 }
 
-pub struct FunctionRoute<F, Req> {
+pub struct FunctionRoute<Ctx, F, Req> {
     f: F,
-    _marker: PhantomData<fn(Req)>,
+    _marker: PhantomData<fn(Ctx, Req)>,
 }
 
-impl<F, Fut, Req> FunctionRoute<F, Req>
+impl<Ctx, F, Fut, Req> FunctionRoute<Ctx, F, Req>
 where
+    Ctx: Context + Send + Sync + 'static,
     F: Fn(Req) -> Fut,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
@@ -115,12 +122,15 @@ where
     }
 }
 
-impl<F, Fut, Req> Routable for FunctionRoute<F, Req>
+impl<Ctx, F, Fut, Req> Routable for FunctionRoute<Ctx, F, Req>
 where
+    Ctx: Context + Send + Sync + 'static,
     F: Fn(Req) -> Fut,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: FromRequest,
 {
+    type Ctx = Ctx;
+
     fn path_prefix_hint(&self) -> &str {
         Req::path_prefix_hint()
     }
@@ -131,6 +141,7 @@ where
 
     fn respond(
         &self,
+        _ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
         let req = match FromRequest::from_request(req) {

@@ -115,7 +115,7 @@ where
 
     pub fn add_route<R>(&mut self, route: R) -> &mut Self
     where
-        R: Routable + Send + Sync + 'static,
+        R: Routable<Ctx = Ctx> + Send + Sync + 'static,
     {
         self.inner_mut().router.add_route(route);
         self
@@ -146,11 +146,11 @@ where
 {
     async fn respond(
         &self,
-        _ctx: &Ctx,
+        ctx: &Ctx,
         req: Request<Body>,
     ) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync>> {
         let resp = if self.router.match_path(req.method(), req.uri().path()) {
-            match self.router.respond(req).await {
+            match self.router.respond(ctx, req).await {
                 Ok(resp) => resp,
                 Err(e) => e.to_response(),
             }
