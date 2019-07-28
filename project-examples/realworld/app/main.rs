@@ -30,6 +30,8 @@ enum SubcommandOpt {
 
 #[runtime::main]
 async fn main() -> failure::Fallible<()> {
+    dotenv::dotenv().ok();
+
     let opt = CommandOpt::from_args();
     let ctx = AppCtx::new();
     match opt.subcommand {
