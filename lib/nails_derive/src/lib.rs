@@ -106,12 +106,12 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
             fn path_prefix_hint() -> &'static str {
                 #path_prefix
             }
-            fn match_path(method: &Method, path: &str) -> bool {
+            fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
                 // TODO: configurable method kind
-                (*method == Method::GET || *method == Method::HEAD) && #path_condition
+                (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && #path_condition
             }
 
-            fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+            fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
                 let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                 let path = req.uri().path();
                 #path_extractor
@@ -236,8 +236,8 @@ mod tests {
             quote! {
                 impl nails::FromRequest for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
-                    fn match_path(method: &Method, path: &str) -> bool {
-                        (*method == Method::GET || *method == Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
+                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
@@ -249,7 +249,7 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
@@ -316,8 +316,8 @@ mod tests {
             quote! {
                 impl nails::FromRequest for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
-                    fn match_path(method: &Method, path: &str) -> bool {
-                        (*method == Method::GET || *method == Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
+                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
@@ -329,7 +329,7 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
@@ -365,8 +365,8 @@ mod tests {
             quote! {
                 impl nails::FromRequest for PingRequest {
                     fn path_prefix_hint() -> &'static str { "/ping" }
-                    fn match_path(method: &Method, path: &str) -> bool {
-                        (*method == Method::GET || *method == Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
+                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "ping").unwrap_or(false)
@@ -374,7 +374,7 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: Request<Body>) -> Result<Self, nails::response::ErrorResponse> {
+                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
                         let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");

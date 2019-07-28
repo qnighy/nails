@@ -6,6 +6,8 @@ pub use request::FromRequest;
 pub use routing::{Routable, Router};
 pub use service::Service;
 
+#[doc(hidden)]
+pub mod __rt;
 pub mod request;
 pub mod response;
 pub mod routing;
