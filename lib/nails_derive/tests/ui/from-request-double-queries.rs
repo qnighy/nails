@@ -1,6 +1,6 @@
-use nails_derive::FromRequest;
+use nails_derive::Preroute;
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id}")]
 pub struct GetPostRequest {
     #[nails(query = "query1rename")]
@@ -8,14 +8,14 @@ pub struct GetPostRequest {
     query1: String,
 }
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id}")]
 pub struct GetPostRequest2 {
     #[nails(query = "query1rename", query = "query1renamerename")]
     query1: String,
 }
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id1}/{id2}")]
 pub struct GetPostRequest3 {
     #[nails(path = "id1", path = "id2")]

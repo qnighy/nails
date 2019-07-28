@@ -1,13 +1,13 @@
 use diesel::prelude::*;
 use hyper::{Body, Response};
 use nails::response::ErrorResponse;
-use nails::FromRequest;
+use nails::Preroute;
 use serde::Serialize;
 
 use crate::context::AppCtx;
 use crate::models::Tag;
 
-#[derive(Debug, FromRequest)]
+#[derive(Debug, Preroute)]
 #[nails(path = "/api/tags")]
 pub(crate) struct ListTagsRequest;
 

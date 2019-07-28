@@ -2,7 +2,7 @@ use hyper::{Body, Response};
 use serde::Serialize;
 
 use nails::response::ErrorResponse;
-use nails::{FromRequest, Service};
+use nails::{Preroute, Service};
 
 use crate::context::AppCtx;
 
@@ -19,7 +19,7 @@ pub fn build_route(_ctx: &AppCtx) -> Service<AppCtx> {
         .finish()
 }
 
-#[derive(Debug, FromRequest)]
+#[derive(Debug, Preroute)]
 #[nails(path = "/")]
 struct IndexRequest {
     #[nails(query)]

@@ -1,6 +1,6 @@
-use nails_derive::FromRequest;
+use nails_derive::Preroute;
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id}")]
 pub enum GetPostRequest {
     Foo {}

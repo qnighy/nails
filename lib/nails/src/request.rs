@@ -6,9 +6,9 @@ use hyper::{Body, Method, Request};
 
 use crate::response::ErrorResponse;
 
-pub use nails_derive::FromRequest;
+pub use nails_derive::Preroute;
 
-pub trait FromRequest: Sized {
+pub trait Preroute: Sized {
     fn path_prefix_hint() -> &'static str {
         ""
     }

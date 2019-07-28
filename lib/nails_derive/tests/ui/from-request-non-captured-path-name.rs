@@ -1,13 +1,13 @@
-use nails_derive::FromRequest;
+use nails_derive::Preroute;
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id}")]
 struct GetPostRequest {
     #[nails(path = "idd")]
     id: String,
 }
 
-#[derive(FromRequest)]
+#[derive(Preroute)]
 #[nails(path = "/api/posts/{id}")]
 struct GetPostRequest2 {
     #[nails(path)]

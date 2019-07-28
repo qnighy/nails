@@ -22,14 +22,14 @@ mod utils;
 #[macro_use]
 mod test_utils;
 
-#[proc_macro_derive(FromRequest, attributes(nails))]
-pub fn derive_from_request(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    derive_from_request2(input.into())
+#[proc_macro_derive(Preroute, attributes(nails))]
+pub fn derive_preroute(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    derive_preroute2(input.into())
         .unwrap_or_else(|e| e.to_compile_error())
         .into()
 }
 
-fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
+fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
     let input = syn::parse2::<DeriveInput>(input)?;
 
     let data = if let syn::Data::Struct(data) = &input.data {
@@ -37,7 +37,7 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     } else {
         return Err(syn::Error::new(
             input.span(),
-            "FromRequest cannot be derived for enums or unions",
+            "Preroute cannot be derived for enums or unions",
         ));
     };
     let attrs = StructAttrs::parse(&input.attrs)?;
@@ -102,7 +102,7 @@ fn derive_from_request2(input: TokenStream) -> syn::Result<TokenStream> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
     Ok(quote! {
-        impl #impl_generics nails::FromRequest for #name #ty_generics #where_clause {
+        impl #impl_generics nails::Preroute for #name #ty_generics #where_clause {
             fn path_prefix_hint() -> &'static str {
                 #path_prefix
             }
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     fn test_derive1() {
         assert_ts_eq!(
-            derive_from_request2(quote! {
+            derive_preroute2(quote! {
                 #[nails(path = "/api/posts/{id}")]
                 struct GetPostRequest {
                     id: String,
@@ -234,7 +234,7 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::FromRequest for GetPostRequest {
+                impl nails::Preroute for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
                     fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
                         (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
@@ -289,9 +289,9 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "FromRequest cannot be derived for enums or unions")]
+    #[should_panic(expected = "Preroute cannot be derived for enums or unions")]
     fn test_derive_enum() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             enum GetPostRequest {
                 Foo {}
@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn test_derive_tuple() {
         assert_ts_eq!(
-            derive_from_request2(quote! {
+            derive_preroute2(quote! {
                 #[nails(path = "/api/posts/{id}")]
                 struct GetPostRequest(
                     #[nails(path = "id")]
@@ -314,7 +314,7 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::FromRequest for GetPostRequest {
+                impl nails::Preroute for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
                     fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
                         (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
@@ -357,13 +357,13 @@ mod tests {
     #[test]
     fn test_derive_unit() {
         assert_ts_eq!(
-            derive_from_request2(quote! {
+            derive_preroute2(quote! {
                 #[nails(path = "/ping")]
                 struct PingRequest;
             })
             .unwrap(),
             quote! {
-                impl nails::FromRequest for PingRequest {
+                impl nails::Preroute for PingRequest {
                     fn path_prefix_hint() -> &'static str { "/ping" }
                     fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
                         (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
@@ -389,7 +389,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             #[nails(path = "/api/posts/{idd}")]
             struct GetPostRequest {}
@@ -400,7 +400,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_paths2() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}", path = "/api/posts/{idd}")]
             struct GetPostRequest {}
         })
@@ -410,7 +410,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "string value expected in #[nails(path)]")]
     fn test_derive_integer_path() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = 1)]
             struct GetPostRequest {}
         })
@@ -420,7 +420,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "#[nails(path)] is needed")]
     fn test_derive_missing_path() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             struct GetPostRequest {}
         })
         .unwrap();
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "unknown option: `foo`")]
     fn test_derive_unknown_struct_attr() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}", foo)]
             struct GetPostRequest {}
         })
@@ -439,7 +439,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "multiple #[nails(query)] definitions")]
     fn test_derive_double_queries() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = "query1rename")]
@@ -453,7 +453,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "multiple #[nails(query)] definitions")]
     fn test_derive_double_queries2() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = "query1rename", query = "query1renamerename")]
@@ -466,7 +466,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "multiple #[nails(path)] definitions")]
     fn test_derive_double_path_kinds() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id1}/{id2}")]
             struct GetPostRequest {
                 #[nails(path = "id1", path = "id2")]
@@ -479,7 +479,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate path names")]
     fn test_derive_duplicate_path_names() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(path)]
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Duplicate path names")]
     fn test_derive_duplicate_path_names2() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(path = "id")]
@@ -508,7 +508,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "string value or no value expected in #[nails(query)]")]
     fn test_derive_integer_query_name() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query = 1)]
@@ -521,7 +521,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "string value or no value expected in #[nails(path)]")]
     fn test_derive_integer_path_name() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(path = 1)]
@@ -534,7 +534,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "This name doesn\\'t exist in the endpoint path")]
     fn test_derive_non_captured_path_name1() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(path = "idd")]
@@ -547,7 +547,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "This name doesn\\'t exist in the endpoint path")]
     fn test_derive_non_captured_path_name2() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(path)]
@@ -560,7 +560,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Missing field for binding name from {id}")]
     fn test_derive_missing_path_names() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest;
         })
@@ -570,7 +570,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")] or alike")]
     fn test_derive_missing_field_kind_for_position_field() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest(
                 String,
@@ -582,7 +582,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Specify name with #[nails(query = \\\"\\\")]")]
     fn test_derive_missing_query_name_for_position_field() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest(
                 #[nails(query)]
@@ -595,7 +595,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Specify name with #[nails(path = \\\"\\\")]")]
     fn test_derive_missing_path_name_for_position_field() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest(
                 #[nails(path)]
@@ -608,7 +608,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "unknown option: `foo`")]
     fn test_derive_unknown_field_attr() {
-        derive_from_request2(quote! {
+        derive_preroute2(quote! {
             #[nails(path = "/api/posts/{id}")]
             struct GetPostRequest {
                 #[nails(query, foo)]

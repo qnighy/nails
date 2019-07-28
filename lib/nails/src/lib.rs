@@ -2,7 +2,7 @@
 
 extern crate self as nails;
 
-pub use request::FromRequest;
+pub use request::Preroute;
 pub use routing::{Routable, Router};
 pub use service::Service;
 

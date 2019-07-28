@@ -7,7 +7,7 @@ use futures::compat::Compat;
 use hyper::service::{MakeService, Service as HyperService};
 use hyper::{Body, Request, Response, StatusCode};
 
-use crate::request::FromRequest;
+use crate::request::Preroute;
 use crate::response::ErrorResponse;
 use crate::routing::{Routable, Router};
 
@@ -150,7 +150,7 @@ where
     where
         F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-        Req: FromRequest + Send + 'static,
+        Req: Preroute + Send + 'static,
     {
         self.inner_mut().router.add_function_route(route);
         self

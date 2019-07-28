@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use contextful::Context;
 use hyper::{Body, Method, Request, Response};
 
-use crate::request::FromRequest;
+use crate::request::Preroute;
 use crate::response::ErrorResponse;
 
 pub struct Router<Ctx>
@@ -40,7 +40,7 @@ where
     where
         F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-        Req: FromRequest + Send + 'static,
+        Req: Preroute + Send + 'static,
     {
         self.add_route(FunctionRoute::new(route))
     }
@@ -117,7 +117,7 @@ where
     Ctx: Context + Send + Sync + 'static,
     F: Fn(Ctx, Req) -> Fut + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-    Req: FromRequest + Send,
+    Req: Preroute + Send,
 {
     pub fn new(f: F) -> Self {
         Self {
@@ -133,7 +133,7 @@ where
     Ctx: Context + Send + Sync + 'static,
     F: Fn(Ctx, Req) -> Fut + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-    Req: FromRequest + Send,
+    Req: Preroute + Send,
 {
     type Ctx = Ctx;
 
@@ -150,7 +150,7 @@ where
         ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Result<Response<Body>, ErrorResponse> {
-        let req = FromRequest::from_request(req)?;
+        let req = Preroute::from_request(req)?;
         (self.f)(ctx.clone(), req).await
     }
 }

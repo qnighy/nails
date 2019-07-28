@@ -1,11 +1,11 @@
 use hyper::{Body, Response};
 use nails::response::ErrorResponse;
-use nails::FromRequest;
+use nails::Preroute;
 use serde::Serialize;
 
 use crate::context::AppCtx;
 
-#[derive(Debug, FromRequest)]
+#[derive(Debug, Preroute)]
 #[nails(path = "/api/articles")]
 pub(crate) struct ListArticlesRequest {
     tag: Option<String>,

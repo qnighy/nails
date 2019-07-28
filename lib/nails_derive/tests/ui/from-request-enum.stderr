@@ -1,4 +1,4 @@
-error: FromRequest cannot be derived for enums or unions
+error: Preroute cannot be derived for enums or unions
  --> $DIR/from-request-enum.rs:4:1
   |
 4 | #[nails(path = "/api/posts/{id}")]
