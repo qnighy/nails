@@ -2,8 +2,8 @@ use futures::prelude::*;
 
 use std::fmt;
 use std::marker::PhantomData;
-use std::pin::Pin;
 
+use async_trait::async_trait;
 use contextful::Context;
 use hyper::{Body, Method, Request, Response};
 
@@ -40,7 +40,7 @@ where
     where
         F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-        Req: FromRequest + 'static,
+        Req: FromRequest + Send + 'static,
     {
         self.add_route(FunctionRoute::new(route))
     }
@@ -55,6 +55,7 @@ where
     }
 }
 
+#[async_trait]
 impl<Ctx> Routable for Router<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
@@ -66,11 +67,11 @@ where
             .iter()
             .any(|route| route.match_path(method, path))
     }
-    fn respond(
+    async fn respond(
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
+    ) -> Result<Response<Body>, ErrorResponse> {
         let method = req.method();
         let path = req.uri().path();
         let mut matched_route = None;
@@ -83,10 +84,14 @@ where
                 matched_route = Some(route);
             }
         }
-        matched_route.expect("no route matched").respond(&ctx, req)
+        matched_route
+            .expect("no route matched")
+            .respond(&ctx, req)
+            .await
     }
 }
 
+#[async_trait]
 pub trait Routable {
     type Ctx: Context + Send + Sync + 'static;
 
@@ -95,11 +100,11 @@ pub trait Routable {
     }
     fn match_path(&self, method: &Method, path: &str) -> bool;
     // TODO: Result
-    fn respond(
+    async fn respond(
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>>;
+    ) -> Result<Response<Body>, ErrorResponse>;
 }
 
 pub struct FunctionRoute<Ctx, F, Req> {
@@ -110,9 +115,9 @@ pub struct FunctionRoute<Ctx, F, Req> {
 impl<Ctx, F, Fut, Req> FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Ctx, Req) -> Fut,
+    F: Fn(Ctx, Req) -> Fut + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-    Req: FromRequest,
+    Req: FromRequest + Send,
 {
     pub fn new(f: F) -> Self {
         Self {
@@ -122,12 +127,13 @@ where
     }
 }
 
+#[async_trait]
 impl<Ctx, F, Fut, Req> Routable for FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Ctx, Req) -> Fut,
+    F: Fn(Ctx, Req) -> Fut + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-    Req: FromRequest,
+    Req: FromRequest + Send,
 {
     type Ctx = Ctx;
 
@@ -139,15 +145,12 @@ where
         Req::match_path(method, path)
     }
 
-    fn respond(
+    async fn respond(
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Pin<Box<dyn Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static>> {
-        let req = match FromRequest::from_request(req) {
-            Ok(req) => req,
-            Err(e) => return future::err(e).boxed(),
-        };
-        (self.f)(ctx.clone(), req).boxed()
+    ) -> Result<Response<Body>, ErrorResponse> {
+        let req = FromRequest::from_request(req)?;
+        (self.f)(ctx.clone(), req).await
     }
 }

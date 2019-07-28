@@ -150,7 +150,7 @@ where
     where
         F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
         Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
-        Req: FromRequest + 'static,
+        Req: FromRequest + Send + 'static,
     {
         self.inner_mut().router.add_function_route(route);
         self
