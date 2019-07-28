@@ -12,43 +12,34 @@ use crate::response::ErrorResponse;
 use crate::routing::{Routable, Router};
 
 #[derive(Debug)]
-pub struct Service<Ctx>
+pub struct ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
-    inner: Arc<ServiceInner<Ctx>>,
-    ctx: Ctx,
+    pub service: Service<Ctx>,
+    pub ctx: Ctx,
 }
 
-impl<Ctx> Service<Ctx>
-where
-    Ctx: Context + Send + Sync + 'static,
-{
-    pub fn builder() -> Builder<Ctx> {
-        Builder::new()
-    }
-}
-
-impl<Ctx> Clone for Service<Ctx>
+impl<Ctx> Clone for ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
     fn clone(&self) -> Self {
         Self {
-            inner: self.inner.clone(),
+            service: self.service.clone(),
             ctx: self.ctx.clone(),
         }
     }
 }
 
-impl<'a, Ctx, HyperCtx> MakeService<HyperCtx> for Service<Ctx>
+impl<'a, Ctx, HyperCtx> MakeService<HyperCtx> for ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
     type ReqBody = Body;
     type ResBody = Body;
     type Error = Box<dyn std::error::Error + Send + Sync>;
-    type Service = Service<Ctx>;
+    type Service = ServiceWithContext<Ctx>;
     type Future = futures01::future::FutureResult<Self::Service, Self::MakeError>;
     type MakeError = Box<dyn std::error::Error + Send + Sync>;
 
@@ -59,7 +50,7 @@ where
     // TODO: implement poll_ready for better connection throttling
 }
 
-impl<'a, Ctx> HyperService for Service<Ctx>
+impl<'a, Ctx> HyperService for ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
@@ -69,7 +60,7 @@ where
     type Future = Compat<future::BoxFuture<'static, Result<Response<Self::ResBody>, Self::Error>>>;
 
     fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
-        let inner = self.inner.clone();
+        let inner = self.service.inner.clone();
         let ctx = self.ctx.clone();
         async move { inner.respond(&ctx, req).await }
             .boxed()
@@ -77,6 +68,41 @@ where
     }
 
     // TODO: implement poll_ready for better connection throttling
+}
+
+#[derive(Debug)]
+pub struct Service<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
+    inner: Arc<ServiceInner<Ctx>>,
+}
+
+impl<Ctx> Service<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
+    pub fn builder() -> Builder<Ctx> {
+        Builder::new()
+    }
+
+    pub fn with_context(self, ctx: &Ctx) -> ServiceWithContext<Ctx> {
+        ServiceWithContext {
+            service: self,
+            ctx: ctx.clone(),
+        }
+    }
+}
+
+impl<Ctx> Clone for Service<Ctx>
+where
+    Ctx: Context + Send + Sync + 'static,
+{
+    fn clone(&self) -> Self {
+        Self {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -99,11 +125,10 @@ where
         }
     }
 
-    pub fn finish(&mut self, ctx: &Ctx) -> Service<Ctx> {
+    pub fn finish(&mut self) -> Service<Ctx> {
         let inner = self.inner.take().expect("Builder::finish called twice");
         Service {
             inner: Arc::new(inner),
-            ctx: ctx.clone(),
         }
     }
 

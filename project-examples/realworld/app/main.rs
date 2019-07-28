@@ -59,7 +59,7 @@ pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fal
 
     let server = Server::builder(incoming)
         .executor(Compat::new(Runtime))
-        .serve(svc)
+        .serve(svc.with_context(ctx))
         .compat();
 
     server.await?;
