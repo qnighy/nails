@@ -1,9 +1,11 @@
+use diesel::prelude::*;
 use hyper::{Body, Response};
 use nails::response::ErrorResponse;
 use nails::FromRequest;
 use serde::Serialize;
 
 use crate::context::AppCtx;
+use crate::models::Tag;
 
 #[derive(Debug, FromRequest)]
 #[nails(path = "/api/tags")]
@@ -15,11 +17,16 @@ pub(crate) struct ListTagsResponseBody {
 }
 
 pub(crate) async fn list_tags(
-    _ctx: AppCtx,
+    ctx: AppCtx,
     _req: ListTagsRequest,
 ) -> Result<Response<Body>, ErrorResponse> {
+    use crate::schema::tags::dsl::*;
+
+    // TODO: async
+    let conn = ctx.db.get().unwrap(); // TODO: handle errors
+    let all_tags = tags.load::<Tag>(&conn).unwrap(); // TODO: handle errors
     let body = ListTagsResponseBody {
-        tags: vec![String::from("tag1"), String::from("tag2")],
+        tags: all_tags.iter().map(|t| t.tag.clone()).collect(),
     };
     Ok(super::json_response(&body))
 }

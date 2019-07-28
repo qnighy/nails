@@ -9,7 +9,7 @@ use diesel::r2d2::{ConnectionManager, Pool};
 #[derive(Clone)]
 pub struct AppCtx {
     // TODO: async
-    db: Pool<ConnectionManager<PgConnection>>,
+    pub db: Pool<ConnectionManager<PgConnection>>,
 }
 
 impl fmt::Debug for AppCtx {

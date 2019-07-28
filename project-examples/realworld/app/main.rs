@@ -13,6 +13,7 @@ use runtime::net::TcpListener;
 use crate::context::AppCtx;
 
 mod context;
+mod models;
 mod routes;
 mod schema;
 
