@@ -5,10 +5,9 @@ extern crate diesel;
 
 use structopt::StructOpt;
 
-use futures::compat::{Compat, Future01CompatExt};
-use futures::TryStreamExt;
+use futures::compat::Future01CompatExt;
 use hyper::Server;
-use runtime::net::TcpListener;
+use nails::utils::hyper_ext::ServerBindExt;
 
 use crate::context::AppCtx;
 
@@ -52,15 +51,12 @@ pub(crate) struct ServerCommandOpt {
 pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fallible<()> {
     let svc = crate::routes::build_route(ctx);
 
-    let mut listener = TcpListener::bind(("127.0.0.1", opt.port.unwrap_or(3000)))?;
-    println!("Listening on {}", listener.local_addr()?);
+    let host: std::net::IpAddr = "127.0.0.1".parse().unwrap();
+    let port = opt.port.unwrap_or(3000);
+    let addr = (host, port).into();
 
-    let incoming = listener.incoming().map_ok(Compat::new).compat();
-
-    let server = Server::builder(incoming)
-        .executor(Compat::new(runtime::task::Spawner::new()))
-        .serve(svc.with_context(ctx))
-        .compat();
+    let server = Server::bind2(&addr).serve(svc.with_context(ctx)).compat();
+    println!("Listening on {}", addr);
 
     server.await?;
 
