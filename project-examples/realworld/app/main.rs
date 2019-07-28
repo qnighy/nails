@@ -58,24 +58,11 @@ pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fal
     let incoming = listener.incoming().map_ok(Compat::new).compat();
 
     let server = Server::builder(incoming)
-        .executor(Compat::new(Runtime))
+        .executor(Compat::new(runtime::task::Spawner::new()))
         .serve(svc.with_context(ctx))
         .compat();
 
     server.await?;
 
     Ok(())
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Runtime;
-
-impl futures::task::Spawn for &Runtime {
-    fn spawn_obj(
-        &mut self,
-        future: futures::future::FutureObj<'static, ()>,
-    ) -> Result<(), futures::task::SpawnError> {
-        let _handle = runtime::spawn(future);
-        Ok(())
-    }
 }
