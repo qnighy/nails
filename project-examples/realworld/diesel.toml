@@ -1,0 +1,2 @@
+[print_schema]
+file = "app/schema.rs"

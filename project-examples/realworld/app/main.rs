@@ -1,5 +1,8 @@
 #![feature(async_await)]
 
+#[macro_use]
+extern crate diesel;
+
 use structopt::StructOpt;
 
 use futures::compat::{Compat, Future01CompatExt};
@@ -11,6 +14,7 @@ use crate::context::AppCtx;
 
 mod context;
 mod routes;
+mod schema;
 
 #[derive(Debug, Clone, StructOpt)]
 struct CommandOpt {
