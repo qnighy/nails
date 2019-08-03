@@ -1,9 +1,13 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
+use std::fmt;
 use std::slice;
 
 use async_trait::async_trait;
+use futures::compat::Stream01CompatExt;
+use futures::prelude::*;
 use hyper::{Body, Method, Request};
+use serde::de::DeserializeOwned;
 
 use crate::response::ErrorResponse;
 
@@ -18,6 +22,53 @@ pub trait Preroute: Sized {
 
     // TODO: Request<Body> -> RoutableRequest
     async fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
+}
+
+#[async_trait]
+pub trait FromBody: Sized {
+    async fn from_body(req: Request<Body>) -> Result<Self, ErrorResponse>;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub struct JsonBody<T>(pub T);
+
+#[derive(Debug, Clone)]
+struct JsonHeaderError;
+
+impl std::fmt::Display for JsonHeaderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("Not a valid json header")
+    }
+}
+
+impl std::error::Error for JsonHeaderError {
+    fn description(&self) -> &str {
+        "Not a valid json header"
+    }
+}
+
+#[async_trait]
+impl<T> FromBody for JsonBody<T>
+where
+    T: DeserializeOwned,
+{
+    async fn from_body(req: Request<Body>) -> Result<Self, ErrorResponse> {
+        if let Some(content_type) = req.headers().get("Content-Type") {
+            if content_type != "application/json" {
+                return Err(JsonHeaderError.into());
+            }
+        } else {
+            return Err(JsonHeaderError.into());
+        }
+        let mut body = req.into_body().compat();
+        let mut buf = Vec::new();
+        while let Some(chunk) = body.next().await {
+            let chunk = chunk?;
+            buf.extend_from_slice(chunk.as_ref());
+        }
+        let data = serde_json::from_slice(&buf)?;
+        Ok(JsonBody(data))
+    }
 }
 
 pub trait FromPath: Sized {
