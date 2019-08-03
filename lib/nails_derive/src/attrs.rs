@@ -14,11 +14,15 @@ macro_rules! if_proc_macro_diagnostics {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StructAttrs {
     pub(crate) path: Option<PathInfo>,
+    pub(crate) method: Option<MethodInfo>,
 }
 
 impl StructAttrs {
     pub(crate) fn parse(attrs: &[Attribute]) -> syn::Result<Self> {
-        let mut ret = Self { path: None };
+        let mut ret = Self {
+            path: None,
+            method: None,
+        };
         for attr in attrs {
             if !attr.path.is_ident("nails") {
                 continue;
@@ -62,6 +66,8 @@ impl StructAttrs {
         let name = meta.name();
         if name == "path" {
             self.parse_path(meta)
+        } else if name == "method" {
+            self.parse_method(meta)
         } else {
             return Err(syn::Error::new(
                 meta.span(),
@@ -102,11 +108,77 @@ impl StructAttrs {
             ));
         }
     }
+
+    fn parse_method(&mut self, meta: &Meta) -> syn::Result<()> {
+        let lit = match meta {
+            Meta::Word(ident) => {
+                return Err(syn::Error::new(
+                    ident.span(),
+                    "string value expected in #[nails(method)]",
+                ));
+            }
+            Meta::List(list) => {
+                return Err(syn::Error::new(
+                    list.paren_token.span,
+                    "extra parentheses in #[nails(method)]",
+                ));
+            }
+            Meta::NameValue(nv) => &nv.lit,
+        };
+        if let Lit::Str(lit) = lit {
+            if self.method.is_some() {
+                return Err(syn::Error::new(
+                    lit.span(),
+                    "multiple #[nails(method)] definitions",
+                ));
+            }
+            let lit_str = lit.value();
+            let kind = match lit_str.as_str() {
+                "GET" => MethodKind::Get,
+                "GET_ONLY" => MethodKind::GetOnly,
+                "HEAD" => MethodKind::Head,
+                "POST" => MethodKind::Post,
+                "PUT" => MethodKind::Put,
+                "DELETE" => MethodKind::Delete,
+                "OPTIONS" => MethodKind::Options,
+                "PATCH" => MethodKind::Patch,
+                _ => return Err(syn::Error::new(lit.span(), "Unknown method type")),
+            };
+            self.method = Some(MethodInfo {
+                lit: lit.clone(),
+                kind,
+            });
+            Ok(())
+        } else {
+            return Err(syn::Error::new(
+                lit.span(),
+                "string value expected in #[nails(path)]",
+            ));
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct PathInfo {
     pub(crate) path: LitStr,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct MethodInfo {
+    pub(crate) lit: LitStr,
+    pub(crate) kind: MethodKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum MethodKind {
+    Get,
+    GetOnly,
+    Head,
+    Post,
+    Put,
+    Delete,
+    Options,
+    Patch,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

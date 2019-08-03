@@ -5,7 +5,7 @@ extern crate proc_macro;
 
 use std::collections::{HashMap, HashSet};
 
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::spanned::Spanned;
 use syn::DeriveInput;
@@ -99,6 +99,13 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
         field_kinds[idx].gen_parser(field, &path_vars)
     })?;
 
+    let method_cond = if let Some(method) = attrs.method {
+        method.kind
+    } else {
+        attrs::MethodKind::Get
+    }
+    .gen_condition(quote! { method });
+
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
     Ok(quote! {
@@ -108,7 +115,7 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
             }
             fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
                 // TODO: configurable method kind
-                (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && #path_condition
+                #method_cond && #path_condition
             }
 
             fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
@@ -119,6 +126,31 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
             }
         }
     })
+}
+
+impl attrs::MethodKind {
+    fn gen_condition(&self, method_var: TokenStream) -> TokenStream {
+        use attrs::MethodKind::*;
+
+        let method_const = match *self {
+            Get => {
+                return quote! {
+                    (*#method_var == nails::__rt::hyper::Method::GET || *#method_var == nails::__rt::hyper::Method::HEAD)
+                }
+            }
+            GetOnly => "GET",
+            Head => "HEAD",
+            Post => "POST",
+            Put => "PUT",
+            Delete => "DELETE",
+            Options => "OPTIONS",
+            Patch => "PATCH",
+        };
+        let method_const = syn::Ident::new(method_const, Span::call_site());
+        quote! {
+            (*#method_var == nails::__rt::hyper::Method::#method_const)
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -282,6 +314,40 @@ mod tests {
                                 }
                             ).unwrap(),
                         })
+                    }
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_derive_post() {
+        assert_ts_eq!(
+            derive_preroute2(quote! {
+                #[nails(path = "/api/posts", method = "POST")]
+                struct CreatePostRequest;
+            })
+            .unwrap(),
+            quote! {
+                impl nails::Preroute for CreatePostRequest {
+                    fn path_prefix_hint() -> &'static str { "/api/posts" }
+                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
+                        (*method == nails::__rt::hyper::Method::POST) && (
+                            path.starts_with("/") && {
+                                let mut path_iter = path[1..].split("/");
+                                path_iter.next().map(|comp| comp == "api").unwrap_or(false)
+                                    && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
+                                    && path_iter.next().is_none()
+                            }
+                        )
+                    }
+                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
+                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                        let path = req.uri().path();
+                        let mut path_iter = path[1..].split("/");
+                        path_iter.next();
+                        path_iter.next();
+                        Ok(CreatePostRequest)
                     }
                 }
             },
