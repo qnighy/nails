@@ -185,6 +185,7 @@ pub(crate) enum MethodKind {
 pub(crate) struct FieldAttrs {
     pub(crate) query: Option<QueryFieldInfo>,
     pub(crate) path: Option<PathFieldInfo>,
+    pub(crate) body: Option<BodyFieldInfo>,
 }
 
 impl FieldAttrs {
@@ -192,6 +193,7 @@ impl FieldAttrs {
         let mut ret = Self {
             query: None,
             path: None,
+            body: None,
         };
         for attr in attrs {
             if !attr.path.is_ident("nails") {
@@ -238,6 +240,8 @@ impl FieldAttrs {
             self.parse_query(meta)
         } else if name == "path" {
             self.parse_path(meta)
+        } else if name == "body" {
+            self.parse_body(meta)
         } else {
             return Err(syn::Error::new(
                 meta.span(),
@@ -305,6 +309,29 @@ impl FieldAttrs {
         self.path = Some(PathFieldInfo { name: lit, span });
         Ok(())
     }
+
+    fn parse_body(&mut self, meta: &Meta) -> syn::Result<()> {
+        let span = match meta {
+            Meta::Word(ident) => ident.span(),
+            Meta::List(list) => {
+                return Err(syn::Error::new(
+                    list.paren_token.span,
+                    "extra parentheses in #[nails(body)]",
+                ));
+            }
+            Meta::NameValue(nv) => {
+                return Err(syn::Error::new(
+                    nv.lit.span(),
+                    "no value expected in #[nails(body)]",
+                ));
+            }
+        };
+        if self.body.is_some() {
+            return Err(syn::Error::new(span, "multiple #[nails(body)] definitions"));
+        }
+        self.body = Some(BodyFieldInfo { span });
+        Ok(())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -332,3 +359,15 @@ impl PartialEq for PathFieldInfo {
     }
 }
 impl Eq for PathFieldInfo {}
+
+#[derive(Debug, Clone)]
+pub(crate) struct BodyFieldInfo {
+    pub(crate) span: Span,
+}
+
+impl PartialEq for BodyFieldInfo {
+    fn eq(&self, _other: &Self) -> bool {
+        true
+    }
+}
+impl Eq for BodyFieldInfo {}

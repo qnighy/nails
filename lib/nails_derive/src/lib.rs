@@ -58,11 +58,15 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
         .parse::<PathPattern>()
         .map_err(|e| syn::Error::new(path_span, e))?;
 
+    let field_len = data.fields.iter().len();
     let field_kinds = data
         .fields
         .iter()
         .zip(&field_attrs)
-        .map(|(field, attrs)| FieldKind::parse_from(field, attrs, path.bindings()))
+        .enumerate()
+        .map(|(i, (field, attrs))| {
+            FieldKind::parse_from(field, i + 1 == field_len, attrs, path.bindings())
+        })
         .collect::<Result<Vec<_>, _>>()?;
 
     let path_fields = {
@@ -161,21 +165,36 @@ impl attrs::MethodKind {
 enum FieldKind {
     Path { var: String },
     Query { name: String },
+    Body,
 }
 
 impl FieldKind {
     fn parse_from(
         field: &syn::Field,
+        is_last: bool,
         attrs: &FieldAttrs,
         path_bindings: &HashSet<String>,
     ) -> syn::Result<FieldKind> {
+        let mut specs = Vec::new();
         if let Some(query) = &attrs.query {
-            if attrs.path.is_some() {
-                return Err(syn::Error::new(
-                    query.span,
-                    "Cannot have both #[nails(query)] and #[nails(path)]",
-                ));
-            }
+            specs.push(("query", query.span));
+        }
+        if let Some(path) = &attrs.path {
+            specs.push(("path", path.span));
+        }
+        if let Some(body) = &attrs.body {
+            specs.push(("body", body.span));
+        }
+        if specs.len() > 1 {
+            return Err(syn::Error::new(
+                specs[1].1,
+                format_args!(
+                    "Cannot have both #[nails({})] and #[nails({})]",
+                    specs[0].0, specs[1].0,
+                ),
+            ));
+        }
+        if let Some(query) = &attrs.query {
             let query_name = if let Some(query_name) = &query.name {
                 query_name.value()
             } else if let Some(ident) = &field.ident {
@@ -207,6 +226,16 @@ impl FieldKind {
                 ));
             }
             return Ok(FieldKind::Path { var: path_name });
+        }
+
+        if let Some(body) = &attrs.body {
+            if !is_last {
+                return Err(syn::Error::new(
+                    body.span,
+                    "Only the last field can have #[nails(body)]",
+                ));
+            }
+            return Ok(FieldKind::Body);
         }
 
         // ident-based fallback
@@ -244,6 +273,11 @@ impl FieldKind {
                         &[]
                     }
                 ).unwrap()  // TODO: error handling
+            },
+            FieldKind::Body => quote! {
+                nails::__rt::FromBody::from_body(
+                    req // TODO: abstract over ident name
+                ).await.unwrap()  // TODO: error handling
             },
         })
     }
