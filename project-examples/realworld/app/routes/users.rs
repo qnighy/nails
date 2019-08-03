@@ -1,6 +1,6 @@
 use hyper::{Body, Response};
+use nails::error::ErrorResponse;
 use nails::request::JsonBody;
-use nails::response::ErrorResponse;
 use nails::Preroute;
 use serde::{Deserialize, Serialize};
 

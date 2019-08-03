@@ -7,8 +7,8 @@ use async_trait::async_trait;
 use contextful::Context;
 use hyper::{Body, Method, Request, Response};
 
+use crate::error::ErrorResponse;
 use crate::request::Preroute;
-use crate::response::ErrorResponse;
 
 pub struct Router<Ctx>
 where

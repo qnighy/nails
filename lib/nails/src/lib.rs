@@ -8,8 +8,8 @@ pub use service::Service;
 
 #[doc(hidden)]
 pub mod __rt;
+pub mod error;
 pub mod request;
-pub mod response;
 pub mod routing;
 pub mod service;
 pub mod utils;

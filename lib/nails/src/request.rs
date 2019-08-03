@@ -9,7 +9,7 @@ use futures::prelude::*;
 use hyper::{Body, Method, Request};
 use serde::de::DeserializeOwned;
 
-use crate::response::ErrorResponse;
+use crate::error::ErrorResponse;
 
 pub use nails_derive::Preroute;
 

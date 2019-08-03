@@ -1,5 +1,5 @@
 use hyper::{Body, Response};
-use nails::response::ErrorResponse;
+use nails::error::ErrorResponse;
 use nails::Preroute;
 use serde::Serialize;
 

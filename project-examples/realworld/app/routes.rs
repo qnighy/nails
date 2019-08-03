@@ -1,7 +1,7 @@
 use hyper::{Body, Response};
 use serde::Serialize;
 
-use nails::response::ErrorResponse;
+use nails::error::ErrorResponse;
 use nails::{Preroute, Service};
 
 use crate::context::AppCtx;

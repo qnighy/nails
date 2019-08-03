@@ -7,8 +7,8 @@ use futures::compat::Compat;
 use hyper::service::{MakeService, Service as HyperService};
 use hyper::{Body, Request, Response, StatusCode};
 
+use crate::error::ErrorResponse;
 use crate::request::Preroute;
-use crate::response::ErrorResponse;
 use crate::routing::{Routable, Router};
 
 #[derive(Debug)]
