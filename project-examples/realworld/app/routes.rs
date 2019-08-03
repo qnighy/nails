@@ -9,10 +9,12 @@ use crate::context::AppCtx;
 mod articles;
 mod posts;
 mod tags;
+mod users;
 
 pub fn build_route(_ctx: &AppCtx) -> Service<AppCtx> {
     Service::builder()
         .add_function_route(index)
+        .add_function_route(users::create_user)
         .add_function_route(posts::get_post)
         .add_function_route(tags::list_tags)
         .add_function_route(articles::list_articles)
