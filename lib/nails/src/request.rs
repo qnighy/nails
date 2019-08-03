@@ -2,12 +2,14 @@ use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::slice;
 
+use async_trait::async_trait;
 use hyper::{Body, Method, Request};
 
 use crate::response::ErrorResponse;
 
 pub use nails_derive::Preroute;
 
+#[async_trait]
 pub trait Preroute: Sized {
     fn path_prefix_hint() -> &'static str {
         ""
@@ -15,7 +17,7 @@ pub trait Preroute: Sized {
     fn match_path(method: &Method, path: &str) -> bool;
 
     // TODO: Request<Body> -> RoutableRequest
-    fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
+    async fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
 }
 
 pub trait FromPath: Sized {

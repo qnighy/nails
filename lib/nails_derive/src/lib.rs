@@ -118,11 +118,15 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
                 #method_cond && #path_condition
             }
 
-            fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+            fn from_request<'a>(
+                req: nails::__rt::Request<nails::__rt::Body>
+            ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                nails::__rt::box_future(async move {
                 let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                 let path = req.uri().path();
                 #path_extractor
                 Ok(#construct)
+                })
             }
         }
     })
@@ -281,7 +285,10 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                    fn from_request<'a>(
+                        req: nails::__rt::Request<nails::__rt::Body>
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                        nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
@@ -314,6 +321,7 @@ mod tests {
                                 }
                             ).unwrap(),
                         })
+                        })
                     }
                 }
             },
@@ -341,13 +349,17 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                    fn from_request<'a>(
+                        req: nails::__rt::Request<nails::__rt::Body>
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                        nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();
                         path_iter.next();
                         Ok(CreatePostRequest)
+                        })
                     }
                 }
             },
@@ -395,7 +407,10 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                    fn from_request<'a>(
+                        req: nails::__rt::Request<nails::__rt::Body>
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                        nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
@@ -414,6 +429,7 @@ mod tests {
                                 }
                             ).unwrap(),
                         ))
+                        })
                     }
                 }
             },
@@ -440,12 +456,16 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                    fn from_request<'a>(
+                        req: nails::__rt::Request<nails::__rt::Body>
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                        nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();
                         Ok(PingRequest)
+                        })
                     }
                 }
             },

@@ -150,7 +150,7 @@ where
         ctx: &Self::Ctx,
         req: Request<Body>,
     ) -> Result<Response<Body>, ErrorResponse> {
-        let req = Preroute::from_request(req)?;
+        let req = Preroute::from_request(req).await?;
         (self.f)(ctx.clone(), req).await
     }
 }
