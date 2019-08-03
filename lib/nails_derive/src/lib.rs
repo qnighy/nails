@@ -109,17 +109,17 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
     let name = &input.ident;
     let (impl_generics, ty_generics, where_clause) = &input.generics.split_for_impl();
     Ok(quote! {
-        impl #impl_generics nails::Preroute for #name #ty_generics #where_clause {
+        impl #impl_generics nails::__rt::Preroute for #name #ty_generics #where_clause {
             fn path_prefix_hint() -> &'static str {
                 #path_prefix
             }
-            fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
+            fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
                 // TODO: configurable method kind
                 #method_cond && #path_condition
             }
 
-            fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
-                let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+            fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                 let path = req.uri().path();
                 #path_extractor
                 Ok(#construct)
@@ -135,7 +135,7 @@ impl attrs::MethodKind {
         let method_const = match *self {
             Get => {
                 return quote! {
-                    (*#method_var == nails::__rt::hyper::Method::GET || *#method_var == nails::__rt::hyper::Method::HEAD)
+                    (*#method_var == nails::__rt::Method::GET || *#method_var == nails::__rt::Method::HEAD)
                 }
             }
             GetOnly => "GET",
@@ -148,7 +148,7 @@ impl attrs::MethodKind {
         };
         let method_const = syn::Ident::new(method_const, Span::call_site());
         quote! {
-            (*#method_var == nails::__rt::hyper::Method::#method_const)
+            (*#method_var == nails::__rt::Method::#method_const)
         }
     }
 }
@@ -233,7 +233,7 @@ impl FieldKind {
                 quote! { #path_var }
             }
             FieldKind::Query { name } => quote! {
-                nails::request::FromQuery::from_query(
+                nails::__rt::FromQuery::from_query(
                     if let Some(values) = query_hash.get(#name) {
                         values.as_slice()
                     } else {
@@ -266,47 +266,47 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::Preroute for GetPostRequest {
+                impl nails::__rt::Preroute for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
-                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
-                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
+                        (*method == nails::__rt::Method::GET || *method == nails::__rt::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                                     && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
                                     && path_iter.next().map(|comp| {
-                                        <String as nails::request::FromPath>::matches(comp)
+                                        <String as nails::__rt::FromPath>::matches(comp)
                                     }).unwrap_or(false)
                                     && path_iter.next().is_none()
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
-                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                        let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();
                         path_iter.next();
-                        let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                        let pathcomp_id = <String as nails::__rt::FromPath>::from_path(
                             path_iter.next().expect("internal error: invalid path given")
                         ).expect("internal error: invalid path given");
                         Ok(GetPostRequest {
                             id: pathcomp_id,
-                            param1: nails::request::FromQuery::from_query(
+                            param1: nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
                                 } else {
                                     &[]
                                 }
                             ).unwrap(),
-                            param2: nails::request::FromQuery::from_query(
+                            param2: nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param2rename") {
                                     values.as_slice()
                                 } else {
                                     &[]
                                 }
                             ).unwrap(),
-                            param3: nails::request::FromQuery::from_query(
+                            param3: nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param3") {
                                     values.as_slice()
                                 } else {
@@ -329,10 +329,10 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::Preroute for CreatePostRequest {
+                impl nails::__rt::Preroute for CreatePostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts" }
-                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
-                        (*method == nails::__rt::hyper::Method::POST) && (
+                    fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
+                        (*method == nails::__rt::Method::POST) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
@@ -341,8 +341,8 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
-                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                        let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();
@@ -380,33 +380,33 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::Preroute for GetPostRequest {
+                impl nails::__rt::Preroute for GetPostRequest {
                     fn path_prefix_hint() -> &'static str { "/api/posts/" }
-                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
-                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
+                        (*method == nails::__rt::Method::GET || *method == nails::__rt::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                                     && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
                                     && path_iter.next().map(|comp| {
-                                        <String as nails::request::FromPath>::matches(comp)
+                                        <String as nails::__rt::FromPath>::matches(comp)
                                     }).unwrap_or(false)
                                     && path_iter.next().is_none()
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
-                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                        let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();
                         path_iter.next();
-                        let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                        let pathcomp_id = <String as nails::__rt::FromPath>::from_path(
                             path_iter.next().expect("internal error: invalid path given")
                         ).expect("internal error: invalid path given");
                         Ok(GetPostRequest(
                             pathcomp_id,
-                            nails::request::FromQuery::from_query(
+                            nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param1") {
                                     values.as_slice()
                                 } else {
@@ -429,10 +429,10 @@ mod tests {
             })
             .unwrap(),
             quote! {
-                impl nails::Preroute for PingRequest {
+                impl nails::__rt::Preroute for PingRequest {
                     fn path_prefix_hint() -> &'static str { "/ping" }
-                    fn match_path(method: &nails::__rt::hyper::Method, path: &str) -> bool {
-                        (*method == nails::__rt::hyper::Method::GET || *method == nails::__rt::hyper::Method::HEAD) && (
+                    fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
+                        (*method == nails::__rt::Method::GET || *method == nails::__rt::Method::HEAD) && (
                             path.starts_with("/") && {
                                 let mut path_iter = path[1..].split("/");
                                 path_iter.next().map(|comp| comp == "ping").unwrap_or(false)
@@ -440,8 +440,8 @@ mod tests {
                             }
                         )
                     }
-                    fn from_request(req: nails::__rt::hyper::Request<nails::__rt::hyper::Body>) -> Result<Self, nails::response::ErrorResponse> {
-                        let query_hash = nails::request::parse_query(req.uri().query().unwrap_or(""));
+                    fn from_request(req: nails::__rt::Request<nails::__rt::Body>) -> Result<Self, nails::__rt::ErrorResponse> {
+                        let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
                         let mut path_iter = path[1..].split("/");
                         path_iter.next();

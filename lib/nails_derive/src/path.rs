@@ -48,7 +48,7 @@ impl PathPattern {
                     let field_ty = &fields[var].ty;
                     quote! {
                         path_iter.next().map(|comp| {
-                            <#field_ty as nails::request::FromPath>::matches(comp)
+                            <#field_ty as nails::__rt::FromPath>::matches(comp)
                         }).unwrap_or(false) &&
                     }
                 }
@@ -84,7 +84,7 @@ impl PathPattern {
                     vars.insert(var.clone(), var_ident.clone());
                     let field_ty = &fields[var].ty;
                     quote! {
-                        let #var_ident = <#field_ty as nails::request::FromPath>::from_path(
+                        let #var_ident = <#field_ty as nails::__rt::FromPath>::from_path(
                             path_iter.next().expect("internal error: invalid path given")
                         ).expect("internal error: invalid path given");
                     }
@@ -286,7 +286,7 @@ mod tests {
                     path_iter.next().map(|comp| comp == "api").unwrap_or(false)
                         && path_iter.next().map(|comp| comp == "posts").unwrap_or(false)
                         && path_iter.next().map(|comp| {
-                            <String as nails::request::FromPath>::matches(comp)
+                            <String as nails::__rt::FromPath>::matches(comp)
                         }).unwrap_or(false)
                         && path_iter.next().is_none()
                 })
@@ -320,7 +320,7 @@ mod tests {
                 let mut path_iter = path[1..].split("/");
                 path_iter.next();
                 path_iter.next();
-                let pathcomp_id = <String as nails::request::FromPath>::from_path(
+                let pathcomp_id = <String as nails::__rt::FromPath>::from_path(
                     path_iter.next().expect("internal error: invalid path given")
                 ).expect("internal error: invalid path given");
             },
