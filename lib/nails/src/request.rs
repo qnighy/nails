@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
-use std::fmt;
 use std::slice;
 
 use async_trait::async_trait;
@@ -9,7 +8,7 @@ use futures::prelude::*;
 use hyper::{Body, Method, Request};
 use serde::de::DeserializeOwned;
 
-use crate::error::ErrorResponse;
+use crate::error::{BodyError, ContentTypeError, ErrorResponse, JsonBodyError};
 
 pub use nails_derive::Preroute;
 
@@ -32,21 +31,6 @@ pub trait FromBody: Sized {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub struct JsonBody<T>(pub T);
 
-#[derive(Debug, Clone)]
-struct JsonHeaderError;
-
-impl std::fmt::Display for JsonHeaderError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str("Not a valid json header")
-    }
-}
-
-impl std::error::Error for JsonHeaderError {
-    fn description(&self) -> &str {
-        "Not a valid json header"
-    }
-}
-
 #[async_trait]
 impl<T> FromBody for JsonBody<T>
 where
@@ -55,18 +39,27 @@ where
     async fn from_body(req: Request<Body>) -> Result<Self, ErrorResponse> {
         if let Some(content_type) = req.headers().get("Content-Type") {
             if content_type != "application/json" {
-                return Err(JsonHeaderError.into());
+                let content_type = String::from_utf8_lossy(content_type.as_bytes()).into_owned();
+                return Err(ContentTypeError {
+                    expected: vec!["application/json".to_owned()],
+                    got: Some(content_type),
+                }
+                .into());
             }
         } else {
-            return Err(JsonHeaderError.into());
+            return Err(ContentTypeError {
+                expected: vec!["application/json".to_owned()],
+                got: None,
+            }
+            .into());
         }
         let mut body = req.into_body().compat();
         let mut buf = Vec::new();
         while let Some(chunk) = body.next().await {
-            let chunk = chunk?;
+            let chunk = chunk.map_err(BodyError)?;
             buf.extend_from_slice(chunk.as_ref());
         }
-        let data = serde_json::from_slice(&buf)?;
+        let data = serde_json::from_slice(&buf).map_err(JsonBodyError)?;
         Ok(JsonBody(data))
     }
 }
