@@ -12,6 +12,6 @@ futures01 = "0.1.28"
 futures-preview = { version = "=0.3.0-alpha.18", features = ["io-compat"] }
 hyper = { version = "0.12.33", default-features = false }
 runtime = "=0.3.0-alpha.7"
-async-trait = "0.1.6"
+async-trait = "0.1.11"
 contextful = { path = "../contextful" }
 nails_derive = { path = "../nails_derive" }
