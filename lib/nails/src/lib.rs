@@ -1,5 +1,3 @@
-#![feature(async_await)]
-
 extern crate self as nails;
 
 pub use request::Preroute;
