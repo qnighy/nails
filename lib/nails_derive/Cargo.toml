@@ -5,10 +5,10 @@ authors = ["Masaki Hara <ackie.h.gmai@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-quote = "0.6.12"
-syn = "0.15.39"
-synstructure = "0.11.0"
-proc-macro2 = "0.4.30"
+quote = "1.0.2"
+syn = "1.0.4"
+synstructure = "0.12.0"
+proc-macro2 = "1.0.1"
 
 [dev-dependencies]
 trybuild = "1.0.6"

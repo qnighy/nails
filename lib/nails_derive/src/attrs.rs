@@ -29,9 +29,9 @@ impl StructAttrs {
             }
             let meta = attr.parse_meta()?;
             let list = match meta {
-                Meta::Word(ident) => {
+                Meta::Path(path) => {
                     return Err(syn::Error::new(
-                        ident.span(),
+                        path.span(),
                         "#[nails] must have an argument list",
                     ));
                 }
@@ -53,7 +53,7 @@ impl StructAttrs {
                     NestedMeta::Meta(meta) => {
                         ret.parse_inner(meta)?;
                     }
-                    NestedMeta::Literal(lit) => {
+                    NestedMeta::Lit(lit) => {
                         return Err(syn::Error::new(lit.span(), "unexpected literal"));
                     }
                 }
@@ -63,24 +63,24 @@ impl StructAttrs {
     }
 
     fn parse_inner(&mut self, meta: &Meta) -> syn::Result<()> {
-        let name = meta.name();
-        if name == "path" {
+        let name = meta.path();
+        if name.is_ident("path") {
             self.parse_path(meta)
-        } else if name == "method" {
+        } else if name.is_ident("method") {
             self.parse_method(meta)
         } else {
             return Err(syn::Error::new(
                 meta.span(),
-                format_args!("unknown option: `{}`", name),
+                format_args!("unknown option: `{}`", path_to_string(name)),
             ));
         }
     }
 
     fn parse_path(&mut self, meta: &Meta) -> syn::Result<()> {
         let lit = match meta {
-            Meta::Word(ident) => {
+            Meta::Path(path) => {
                 return Err(syn::Error::new(
-                    ident.span(),
+                    path.span(),
                     "string value expected in #[nails(path)]",
                 ));
             }
@@ -111,9 +111,9 @@ impl StructAttrs {
 
     fn parse_method(&mut self, meta: &Meta) -> syn::Result<()> {
         let lit = match meta {
-            Meta::Word(ident) => {
+            Meta::Path(path) => {
                 return Err(syn::Error::new(
-                    ident.span(),
+                    path.span(),
                     "string value expected in #[nails(method)]",
                 ));
             }
@@ -201,9 +201,9 @@ impl FieldAttrs {
             }
             let meta = attr.parse_meta()?;
             let list = match meta {
-                Meta::Word(ident) => {
+                Meta::Path(path) => {
                     return Err(syn::Error::new(
-                        ident.span(),
+                        path.span(),
                         "#[nails] must have an argument list",
                     ));
                 }
@@ -225,7 +225,7 @@ impl FieldAttrs {
                     NestedMeta::Meta(meta) => {
                         ret.parse_inner(meta)?;
                     }
-                    NestedMeta::Literal(lit) => {
+                    NestedMeta::Lit(lit) => {
                         return Err(syn::Error::new(lit.span(), "unexpected literal"));
                     }
                 }
@@ -235,24 +235,24 @@ impl FieldAttrs {
     }
 
     fn parse_inner(&mut self, meta: &Meta) -> syn::Result<()> {
-        let name = meta.name();
-        if name == "query" {
+        let name = meta.path();
+        if name.is_ident("query") {
             self.parse_query(meta)
-        } else if name == "path" {
+        } else if name.is_ident("path") {
             self.parse_path(meta)
-        } else if name == "body" {
+        } else if name.is_ident("body") {
             self.parse_body(meta)
         } else {
             return Err(syn::Error::new(
                 meta.span(),
-                format_args!("unknown option: `{}`", name),
+                format_args!("unknown option: `{}`", path_to_string(name)),
             ));
         }
     }
 
     fn parse_query(&mut self, meta: &Meta) -> syn::Result<()> {
         let (lit, span) = match meta {
-            Meta::Word(ident) => (None, ident.span()),
+            Meta::Path(path) => (None, path.span()),
             Meta::List(list) => {
                 return Err(syn::Error::new(
                     list.paren_token.span,
@@ -282,7 +282,7 @@ impl FieldAttrs {
 
     fn parse_path(&mut self, meta: &Meta) -> syn::Result<()> {
         let (lit, span) = match meta {
-            Meta::Word(ident) => (None, ident.span()),
+            Meta::Path(path) => (None, path.span()),
             Meta::List(list) => {
                 return Err(syn::Error::new(
                     list.paren_token.span,
@@ -312,7 +312,7 @@ impl FieldAttrs {
 
     fn parse_body(&mut self, meta: &Meta) -> syn::Result<()> {
         let span = match meta {
-            Meta::Word(ident) => ident.span(),
+            Meta::Path(path) => path.span(),
             Meta::List(list) => {
                 return Err(syn::Error::new(
                     list.paren_token.span,
@@ -371,3 +371,23 @@ impl PartialEq for BodyFieldInfo {
     }
 }
 impl Eq for BodyFieldInfo {}
+
+fn path_to_string(path: &syn::Path) -> String {
+    use std::fmt::Write;
+
+    let mut s = String::new();
+    if path.leading_colon.is_some() {
+        s.push_str("::");
+    }
+    for pair in path.segments.pairs() {
+        match pair {
+            syn::punctuated::Pair::Punctuated(seg, _) => {
+                write!(s, "{}::", seg.ident).ok();
+            }
+            syn::punctuated::Pair::End(seg) => {
+                write!(s, "{}", seg.ident).ok();
+            }
+        }
+    }
+    s
+}

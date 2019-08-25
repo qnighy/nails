@@ -2,12 +2,12 @@ error: Duplicate path names
  --> $DIR/from-request-duplicate-path-names.rs:8:13
   |
 8 |     #[nails(path = "id")]
-  |             ^^^^
+  |             ^^^^^^^^^^^
 
 error: Duplicate path names
   --> $DIR/from-request-duplicate-path-names.rs:17:5
    |
 17 |     id: String,
-   |     ^^
+   |     ^^^^^^^^^^
 
 error: Could not compile `nails_derive-tests`.

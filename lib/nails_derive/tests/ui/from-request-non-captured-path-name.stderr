@@ -2,7 +2,7 @@ error: This name doesn't exist in the endpoint path
  --> $DIR/from-request-non-captured-path-name.rs:6:13
   |
 6 |     #[nails(path = "idd")]
-  |             ^^^^
+  |             ^^^^^^^^^^^^
 
 error: This name doesn't exist in the endpoint path
   --> $DIR/from-request-non-captured-path-name.rs:13:13

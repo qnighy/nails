@@ -1,7 +1,10 @@
 error: Preroute cannot be derived for enums or unions
  --> $DIR/from-request-enum.rs:4:1
   |
-4 | #[nails(path = "/api/posts/{id}")]
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+4 | / #[nails(path = "/api/posts/{id}")]
+5 | | pub enum GetPostRequest {
+6 | |     Foo {}
+7 | | }
+  | |_^
 
 error: Could not compile `nails_derive-tests`.
