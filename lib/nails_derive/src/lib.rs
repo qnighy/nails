@@ -276,7 +276,7 @@ impl FieldKind {
             FieldKind::Body => quote! {
                 nails::__rt::FromBody::from_body(
                     req // TODO: abstract over ident name
-                ).await.unwrap()  // TODO: error handling
+                ).await?
             },
         })
     }
