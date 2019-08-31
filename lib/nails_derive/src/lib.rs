@@ -1,4 +1,3 @@
-#![recursion_limit = "256"]
 #![cfg_attr(feature = "proc_macro_diagnostics", feature(proc_macro_diagnostics))]
 
 extern crate proc_macro;
