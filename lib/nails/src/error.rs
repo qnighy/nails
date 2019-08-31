@@ -8,6 +8,7 @@ pub enum ErrorResponse {
     ContentTypeError(ContentTypeError),
     JsonBodyError(JsonBodyError),
     BodyError(BodyError),
+    QueryError(QueryError),
     AnyError {
         status: StatusCode,
         error_code: Option<String>,
@@ -39,7 +40,7 @@ impl ErrorResponse {
         match self {
             AnyError { status, .. } => *status,
             ContentTypeError(..) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            JsonBodyError(..) => StatusCode::BAD_REQUEST,
+            QueryError(..) | JsonBodyError(..) => StatusCode::BAD_REQUEST,
             BodyError(..) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -48,9 +49,7 @@ impl ErrorResponse {
         use ErrorResponse::*;
         match self {
             AnyError { error_code, .. } => error_code.clone(),
-            ContentTypeError(..) => None,
-            JsonBodyError(..) => None,
-            BodyError(..) => None,
+            _ => None,
         }
     }
 
@@ -60,6 +59,7 @@ impl ErrorResponse {
             AnyError { public_message, .. } => public_message.clone(),
             ContentTypeError(e) => Some(e.to_string()),
             JsonBodyError(e) => Some(e.to_string()),
+            QueryError(e) => Some(e.to_string()),
             BodyError(..) => None,
         }
     }
@@ -70,6 +70,7 @@ impl ErrorResponse {
             AnyError { error, .. } => error.as_ref().map(|x| x.as_fail()),
             ContentTypeError(e) => Some(e),
             JsonBodyError(e) => Some(e),
+            QueryError(e) => Some(e),
             BodyError(e) => Some(e),
         }
     }
@@ -84,6 +85,12 @@ impl From<ContentTypeError> for ErrorResponse {
 impl From<JsonBodyError> for ErrorResponse {
     fn from(e: JsonBodyError) -> Self {
         ErrorResponse::JsonBodyError(e)
+    }
+}
+
+impl From<QueryError> for ErrorResponse {
+    fn from(e: QueryError) -> Self {
+        ErrorResponse::QueryError(e)
     }
 }
 

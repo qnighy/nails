@@ -271,7 +271,7 @@ impl FieldKind {
                     } else {
                         &[]
                     }
-                ).unwrap()  // TODO: error handling
+                )?
             },
             FieldKind::Body => quote! {
                 nails::__rt::FromBody::from_body(
@@ -338,21 +338,21 @@ mod tests {
                                 } else {
                                     &[]
                                 }
-                            ).unwrap(),
+                            )?,
                             param2: nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param2rename") {
                                     values.as_slice()
                                 } else {
                                     &[]
                                 }
-                            ).unwrap(),
+                            )?,
                             param3: nails::__rt::FromQuery::from_query(
                                 if let Some(values) = query_hash.get("param3") {
                                     values.as_slice()
                                 } else {
                                     &[]
                                 }
-                            ).unwrap(),
+                            )?,
                         })
                         })
                     }
@@ -460,7 +460,7 @@ mod tests {
                                 } else {
                                     &[]
                                 }
-                            ).unwrap(),
+                            )?,
                         ))
                         })
                     }
