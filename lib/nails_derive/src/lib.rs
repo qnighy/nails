@@ -117,7 +117,6 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
                 #path_prefix
             }
             fn match_path(method: &nails::__rt::Method, path: &str) -> bool {
-                // TODO: configurable method kind
                 #method_cond && #path_condition
             }
 
