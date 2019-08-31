@@ -8,7 +8,7 @@ use futures::prelude::*;
 use hyper::{Body, Method, Request};
 use serde::de::DeserializeOwned;
 
-use crate::error::{BodyError, ContentTypeError, ErrorResponse, JsonBodyError};
+use crate::error::{BodyError, ContentTypeError, ErrorResponse, JsonBodyError, QueryError};
 
 pub use nails_derive::Preroute;
 
@@ -96,14 +96,23 @@ from_path_int_matcher!(u8 u16 u32 u64 u128 i8 i16 i32 i64 i128);
 
 pub trait FromQuery: Sized {
     // TODO: Result
-    fn from_query(values: &[String]) -> Result<Self, ()>;
+    fn from_query(values: &[String]) -> Result<Self, QueryError>;
+}
+
+fn require_one(values: &[String]) -> Result<&str, QueryError> {
+    if values.len() > 1 {
+        return Err(QueryError::MultipleQuery);
+    } else if values.len() < 1 {
+        return Err(QueryError::NoQuery);
+    }
+    Ok(&values[0])
 }
 
 impl<T> FromQuery for Vec<T>
 where
     T: FromQuery,
 {
-    fn from_query(values: &[String]) -> Result<Self, ()> {
+    fn from_query(values: &[String]) -> Result<Self, QueryError> {
         values
             .iter()
             .map(|x| T::from_query(slice::from_ref(x)))
@@ -115,7 +124,7 @@ impl<T> FromQuery for Option<T>
 where
     T: FromQuery,
 {
-    fn from_query(values: &[String]) -> Result<Self, ()> {
+    fn from_query(values: &[String]) -> Result<Self, QueryError> {
         if values.is_empty() {
             Ok(None)
         } else {
@@ -125,20 +134,14 @@ where
 }
 
 impl FromQuery for String {
-    fn from_query(values: &[String]) -> Result<Self, ()> {
-        if values.len() != 1 {
-            return Err(());
-        }
-        Ok(values[0].clone())
+    fn from_query(values: &[String]) -> Result<Self, QueryError> {
+        Ok(require_one(values)?.to_owned())
     }
 }
 
 impl FromQuery for i32 {
-    fn from_query(values: &[String]) -> Result<Self, ()> {
-        if values.len() != 1 {
-            return Err(());
-        }
-        values[0].parse().map_err(|_| ())
+    fn from_query(values: &[String]) -> Result<Self, QueryError> {
+        Ok(require_one(values)?.parse()?)
     }
 }
 
@@ -243,24 +246,24 @@ mod tests {
 
     #[test]
     fn test_from_query() {
-        assert_eq!(String::from_query(&[]), Err(()));
-        assert_eq!(String::from_query(&[S("foo")]), Ok(S("foo")));
-        assert_eq!(String::from_query(&[S("foo"), S("bar")]), Err(()));
-        assert_eq!(Option::<String>::from_query(&[]), Ok(None));
+        assert_eq!(String::from_query(&[]).ok(), None);
+        assert_eq!(String::from_query(&[S("foo")]).ok(), Some(S("foo")));
+        assert_eq!(String::from_query(&[S("foo"), S("bar")]).ok(), None);
+        assert_eq!(Option::<String>::from_query(&[]).ok(), Some(None));
         assert_eq!(
-            Option::<String>::from_query(&[S("foo")]),
-            Ok(Some(S("foo")))
+            Option::<String>::from_query(&[S("foo")]).ok(),
+            Some(Some(S("foo")))
         );
-        assert_eq!(Option::<String>::from_query(&[S("foo"), S("bar")]), Err(()));
-        assert_eq!(i32::from_query(&[S("42")]), Ok(42));
-        assert_eq!(i32::from_query(&[S("42"), S("42")]), Err(()));
-        assert_eq!(i32::from_query(&[S("4x2")]), Err(()));
-        assert_eq!(i32::from_query(&[]), Err(()));
-        assert_eq!(Vec::<i32>::from_query(&[]), Ok(vec![]));
-        assert_eq!(Vec::<i32>::from_query(&[S("42")]), Ok(vec![42]));
+        assert_eq!(Option::<String>::from_query(&[S("foo"), S("bar")]).ok(), None);
+        assert_eq!(i32::from_query(&[S("42")]).ok(), Some(42));
+        assert_eq!(i32::from_query(&[S("42"), S("42")]).ok(), None);
+        assert_eq!(i32::from_query(&[S("4x2")]).ok(), None);
+        assert_eq!(i32::from_query(&[]).ok(), None);
+        assert_eq!(Vec::<i32>::from_query(&[]).ok(), Some(vec![]));
+        assert_eq!(Vec::<i32>::from_query(&[S("42")]).ok(), Some(vec![42]));
         assert_eq!(
-            Vec::<i32>::from_query(&[S("42"), S("42")]),
-            Ok(vec![42, 42])
+            Vec::<i32>::from_query(&[S("42"), S("42")]).ok(),
+            Some(vec![42, 42])
         );
     }
 

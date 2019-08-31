@@ -185,3 +185,50 @@ impl std::error::Error for BodyError {
         Some(&self.0)
     }
 }
+
+#[derive(Debug)]
+pub enum QueryError {
+    MultipleQuery,
+    NoQuery,
+    ParseIntError(std::num::ParseIntError),
+    ParseFloatError(std::num::ParseFloatError),
+    AnyError(failure::Error),
+}
+
+impl fmt::Display for QueryError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use QueryError::*;
+        match self {
+            MultipleQuery => write!(f, "multiple query values found"),
+            NoQuery => write!(f, "no query value found"),
+            ParseIntError(e) => write!(f, "{}", e),
+            ParseFloatError(e) => write!(f, "{}", e),
+            AnyError(e) => write!(f, "{}", e),
+        }
+    }
+}
+
+impl std::error::Error for QueryError {
+    fn description(&self) -> &str {
+        use QueryError::*;
+        match self {
+            MultipleQuery => "multiple query values found",
+            NoQuery => "no query value found",
+            ParseIntError(e) => e.description(),
+            ParseFloatError(e) => e.description(),
+            AnyError(_) => "some error",
+        }
+    }
+}
+
+impl From<std::num::ParseIntError> for QueryError {
+    fn from(e: std::num::ParseIntError) -> Self {
+        QueryError::ParseIntError(e)
+    }
+}
+
+impl From<std::num::ParseFloatError> for QueryError {
+    fn from(e: std::num::ParseFloatError) -> Self {
+        QueryError::ParseFloatError(e)
+    }
+}
