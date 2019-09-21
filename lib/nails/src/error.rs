@@ -1,7 +1,20 @@
 use failure::Fail;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
+use std::any::Any;
 use std::fmt;
+
+pub trait ServiceError: std::error::Error + Any + Send + Sync {
+    fn status(&self) -> StatusCode;
+    fn class_name(&self) -> &str;
+    fn has_public_message(&self) -> bool {
+        false
+    }
+    fn fmt_public_message(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        drop(f);
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub enum ErrorResponse {
@@ -113,6 +126,21 @@ pub struct ContentTypeError {
     pub got: Option<String>,
 }
 
+impl ServiceError for ContentTypeError {
+    fn status(&self) -> StatusCode {
+        StatusCode::UNSUPPORTED_MEDIA_TYPE
+    }
+    fn class_name(&self) -> &str {
+        "nails::error::ContentTypeError"
+    }
+    fn has_public_message(&self) -> bool {
+        true
+    }
+    fn fmt_public_message(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
 impl fmt::Display for ContentTypeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Self { expected, got } = self;
@@ -150,6 +178,21 @@ impl std::error::Error for ContentTypeError {
 #[derive(Debug)]
 pub struct JsonBodyError(pub serde_json::Error);
 
+impl ServiceError for JsonBodyError {
+    fn status(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+    fn class_name(&self) -> &str {
+        "nails::error::JsonBodyError"
+    }
+    fn has_public_message(&self) -> bool {
+        true
+    }
+    fn fmt_public_message(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
 impl fmt::Display for JsonBodyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Error in JSON Body: {}", self.0)
@@ -172,6 +215,15 @@ impl std::error::Error for JsonBodyError {
 
 #[derive(Debug)]
 pub struct BodyError(pub hyper::Error);
+
+impl ServiceError for BodyError {
+    fn status(&self) -> StatusCode {
+        StatusCode::INTERNAL_SERVER_ERROR
+    }
+    fn class_name(&self) -> &str {
+        "nails::error::BodyError"
+    }
+}
 
 impl fmt::Display for BodyError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -200,6 +252,21 @@ pub enum QueryError {
     ParseIntError(std::num::ParseIntError),
     ParseFloatError(std::num::ParseFloatError),
     AnyError(failure::Error),
+}
+
+impl ServiceError for QueryError {
+    fn status(&self) -> StatusCode {
+        StatusCode::BAD_REQUEST
+    }
+    fn class_name(&self) -> &str {
+        "nails::error::QueryError"
+    }
+    fn has_public_message(&self) -> bool {
+        true
+    }
+    fn fmt_public_message(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
 }
 
 impl fmt::Display for QueryError {

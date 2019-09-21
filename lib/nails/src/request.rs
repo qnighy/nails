@@ -254,7 +254,10 @@ mod tests {
             Option::<String>::from_query(&[S("foo")]).ok(),
             Some(Some(S("foo")))
         );
-        assert_eq!(Option::<String>::from_query(&[S("foo"), S("bar")]).ok(), None);
+        assert_eq!(
+            Option::<String>::from_query(&[S("foo"), S("bar")]).ok(),
+            None
+        );
         assert_eq!(i32::from_query(&[S("42")]).ok(), Some(42));
         assert_eq!(i32::from_query(&[S("42"), S("42")]).ok(), None);
         assert_eq!(i32::from_query(&[S("4x2")]).ok(), None);
