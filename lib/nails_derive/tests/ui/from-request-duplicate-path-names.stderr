@@ -10,4 +10,4 @@ error: Duplicate path names
 17 |     id: String,
    |     ^^^^^^^^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

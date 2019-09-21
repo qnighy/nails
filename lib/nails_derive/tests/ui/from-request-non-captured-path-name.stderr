@@ -10,4 +10,4 @@ error: This name doesn't exist in the endpoint path
 13 |     #[nails(path)]
    |             ^^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

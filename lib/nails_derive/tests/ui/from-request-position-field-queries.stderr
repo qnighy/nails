@@ -4,4 +4,4 @@ error: Specify name with #[nails(query = "")]
 6 |     #[nails(query)]
   |             ^^^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

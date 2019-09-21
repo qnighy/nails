@@ -10,4 +10,4 @@ error: multiple #[nails(path)] definitions
 9 | #[nails(path = "/api/posts/{id}", path = "/api/posts/{idd}")]
   |                                          ^^^^^^^^^^^^^^^^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

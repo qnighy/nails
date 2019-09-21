@@ -10,4 +10,4 @@ error: unknown option: `foo`
 10 |     #[nails(query, foo)]
    |                    ^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

@@ -7,4 +7,4 @@ error: Preroute cannot be derived for enums or unions
 7 | | }
   | |_^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

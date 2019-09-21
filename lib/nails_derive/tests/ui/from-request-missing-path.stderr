@@ -4,4 +4,4 @@ error: #[nails(path)] is needed
 4 | pub struct GetPostRequest {}
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.

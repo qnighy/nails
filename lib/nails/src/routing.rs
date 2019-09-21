@@ -115,7 +115,7 @@ pub struct FunctionRoute<Ctx, F, Req> {
 impl<Ctx, F, Fut, Req> FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Ctx, Req) -> Fut + Sync,
+    F: Fn(Ctx, Req) -> Fut + Send + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: Preroute + Send,
 {
@@ -131,7 +131,7 @@ where
 impl<Ctx, F, Fut, Req> Routable for FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
-    F: Fn(Ctx, Req) -> Fut + Sync,
+    F: Fn(Ctx, Req) -> Fut + Send + Sync,
     Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
     Req: Preroute + Send,
 {

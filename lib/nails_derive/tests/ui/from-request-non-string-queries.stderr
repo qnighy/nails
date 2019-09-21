@@ -16,4 +16,4 @@ error: string value or no value expected in #[nails(path)]
 20 |     #[nails(path = 42)]
    |                    ^^
 
-error: Could not compile `nails_derive-tests`.
+error: could not compile `nails_derive-tests`.
