@@ -1,4 +1,3 @@
-use failure::Fail;
 use hyper::{Body, Response, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::any::Any;
@@ -16,18 +15,32 @@ pub trait ServiceError: std::error::Error + Any + Send + Sync {
     }
 }
 
+pub trait ServiceErrorExt: ServiceError {
+    fn public_message(&self) -> Option<PublicMessage<'_, Self>> {
+        if self.has_public_message() {
+            Some(PublicMessage(self))
+        } else {
+            None
+        }
+    }
+}
+impl<T: ServiceError + ?Sized> ServiceErrorExt for T {}
+
+pub struct PublicMessage<'a, E: ServiceError + ?Sized>(&'a E);
+
+impl<E: ServiceError + ?Sized> fmt::Display for PublicMessage<'_, E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.0.fmt_public_message(f)
+    }
+}
+
 #[derive(Debug)]
 pub enum NailsError {
     ContentTypeError(ContentTypeError),
     JsonBodyError(JsonBodyError),
     BodyError(BodyError),
     QueryError(QueryError),
-    AnyError {
-        status: StatusCode,
-        error_code: Option<String>,
-        public_message: Option<String>,
-        error: Option<failure::Error>,
-    },
+    AnyError(Box<dyn ServiceError>),
 }
 
 impl NailsError {
@@ -37,54 +50,94 @@ impl NailsError {
             .header("Content-Type", "application/json")
             .body(Body::from(
                 serde_json::to_string(&ErrorBody {
-                    error: self.error().and_then(|e| e.name().map(|x| x.to_owned())),
+                    error: self.class_name().to_owned(),
                     message: self
                         .public_message()
-                        .clone()
+                        .map(|m| m.to_string())
                         .unwrap_or_else(|| "error".to_string()),
                 })
                 .unwrap(),
             ))
             .unwrap()
     }
+}
 
-    pub fn status(&self) -> StatusCode {
+impl ServiceError for NailsError {
+    fn status(&self) -> StatusCode {
         use NailsError::*;
         match self {
-            AnyError { status, .. } => *status,
-            ContentTypeError(..) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
-            QueryError(..) | JsonBodyError(..) => StatusCode::BAD_REQUEST,
-            BodyError(..) => StatusCode::INTERNAL_SERVER_ERROR,
+            ContentTypeError(e) => e.status(),
+            JsonBodyError(e) => e.status(),
+            BodyError(e) => e.status(),
+            QueryError(e) => e.status(),
+            AnyError(e) => e.status(),
+        }
+    }
+    fn class_name(&self) -> &str {
+        use NailsError::*;
+        match self {
+            ContentTypeError(e) => e.class_name(),
+            JsonBodyError(e) => e.class_name(),
+            BodyError(e) => e.class_name(),
+            QueryError(e) => e.class_name(),
+            AnyError(e) => e.class_name(),
+        }
+    }
+    fn has_public_message(&self) -> bool {
+        use NailsError::*;
+        match self {
+            ContentTypeError(e) => e.has_public_message(),
+            JsonBodyError(e) => e.has_public_message(),
+            BodyError(e) => e.has_public_message(),
+            QueryError(e) => e.has_public_message(),
+            AnyError(e) => e.has_public_message(),
+        }
+    }
+    fn fmt_public_message(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use NailsError::*;
+        match self {
+            ContentTypeError(e) => e.fmt_public_message(f),
+            JsonBodyError(e) => e.fmt_public_message(f),
+            BodyError(e) => e.fmt_public_message(f),
+            QueryError(e) => e.fmt_public_message(f),
+            AnyError(e) => e.fmt_public_message(f),
+        }
+    }
+}
+
+impl std::error::Error for NailsError {
+    fn description(&self) -> &str {
+        use NailsError::*;
+        match self {
+            ContentTypeError(e) => e.description(),
+            JsonBodyError(e) => e.description(),
+            BodyError(e) => e.description(),
+            QueryError(e) => e.description(),
+            AnyError(e) => e.description(),
         }
     }
 
-    pub fn error_code(&self) -> Option<String> {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         use NailsError::*;
         match self {
-            AnyError { error_code, .. } => error_code.clone(),
-            _ => None,
+            ContentTypeError(e) => e.source(),
+            JsonBodyError(e) => e.source(),
+            BodyError(e) => e.source(),
+            QueryError(e) => e.source(),
+            AnyError(e) => e.source(),
         }
     }
+}
 
-    pub fn public_message(&self) -> Option<String> {
+impl fmt::Display for NailsError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use NailsError::*;
         match self {
-            AnyError { public_message, .. } => public_message.clone(),
-            ContentTypeError(e) => Some(e.to_string()),
-            JsonBodyError(e) => Some(e.to_string()),
-            QueryError(e) => Some(e.to_string()),
-            BodyError(..) => None,
-        }
-    }
-
-    pub fn error(&self) -> Option<&dyn Fail> {
-        use NailsError::*;
-        match self {
-            AnyError { error, .. } => error.as_ref().map(|x| x.as_fail()),
-            ContentTypeError(e) => Some(e),
-            JsonBodyError(e) => Some(e),
-            QueryError(e) => Some(e),
-            BodyError(e) => Some(e),
+            ContentTypeError(e) => e.fmt(f),
+            JsonBodyError(e) => e.fmt(f),
+            BodyError(e) => e.fmt(f),
+            QueryError(e) => e.fmt(f),
+            AnyError(e) => e.fmt(f),
         }
     }
 }
@@ -115,8 +168,7 @@ impl From<BodyError> for NailsError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ErrorBody {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    error: Option<String>,
+    error: String,
     message: String,
 }
 
