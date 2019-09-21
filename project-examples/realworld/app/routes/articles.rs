@@ -1,5 +1,5 @@
 use hyper::{Body, Response};
-use nails::error::ErrorResponse;
+use nails::error::NailsError;
 use nails::Preroute;
 use serde::Serialize;
 
@@ -25,7 +25,7 @@ pub(crate) struct ListArticlesResponseBody {
 pub(crate) async fn list_articles(
     _ctx: AppCtx,
     _req: ListArticlesRequest,
-) -> Result<Response<Body>, ErrorResponse> {
+) -> Result<Response<Body>, NailsError> {
     let articles = vec![Article {
         slug: String::from("slug"),
         title: String::from("title"),

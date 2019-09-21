@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use hyper::{Body, Response};
-use nails::error::ErrorResponse;
+use nails::error::NailsError;
 use nails::Preroute;
 use serde::Serialize;
 
@@ -19,7 +19,7 @@ pub(crate) struct ListTagsResponseBody {
 pub(crate) async fn list_tags(
     ctx: AppCtx,
     _req: ListTagsRequest,
-) -> Result<Response<Body>, ErrorResponse> {
+) -> Result<Response<Body>, NailsError> {
     use crate::schema::tags::dsl::*;
 
     // TODO: async

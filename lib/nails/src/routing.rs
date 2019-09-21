@@ -7,7 +7,7 @@ use async_trait::async_trait;
 use contextful::Context;
 use hyper::{Body, Method, Request, Response};
 
-use crate::error::ErrorResponse;
+use crate::error::NailsError;
 use crate::request::Preroute;
 
 pub struct Router<Ctx>
@@ -39,7 +39,7 @@ where
     pub fn add_function_route<F, Fut, Req>(&mut self, route: F)
     where
         F: Fn(Ctx, Req) -> Fut + Send + Sync + 'static,
-        Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
+        Fut: Future<Output = Result<Response<Body>, NailsError>> + Send + 'static,
         Req: Preroute + Send + 'static,
     {
         self.add_route(FunctionRoute::new(route))
@@ -71,7 +71,7 @@ where
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Result<Response<Body>, ErrorResponse> {
+    ) -> Result<Response<Body>, NailsError> {
         let method = req.method();
         let path = req.uri().path();
         let mut matched_route = None;
@@ -104,7 +104,7 @@ pub trait Routable {
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Result<Response<Body>, ErrorResponse>;
+    ) -> Result<Response<Body>, NailsError>;
 }
 
 pub struct FunctionRoute<Ctx, F, Req> {
@@ -116,7 +116,7 @@ impl<Ctx, F, Fut, Req> FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
     F: Fn(Ctx, Req) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
+    Fut: Future<Output = Result<Response<Body>, NailsError>> + Send + 'static,
     Req: Preroute + Send,
 {
     pub fn new(f: F) -> Self {
@@ -132,7 +132,7 @@ impl<Ctx, F, Fut, Req> Routable for FunctionRoute<Ctx, F, Req>
 where
     Ctx: Context + Send + Sync + 'static,
     F: Fn(Ctx, Req) -> Fut + Send + Sync,
-    Fut: Future<Output = Result<Response<Body>, ErrorResponse>> + Send + 'static,
+    Fut: Future<Output = Result<Response<Body>, NailsError>> + Send + 'static,
     Req: Preroute + Send,
 {
     type Ctx = Ctx;
@@ -149,7 +149,7 @@ where
         &self,
         ctx: &Self::Ctx,
         req: Request<Body>,
-    ) -> Result<Response<Body>, ErrorResponse> {
+    ) -> Result<Response<Body>, NailsError> {
         let req = Preroute::from_request(req).await?;
         (self.f)(ctx.clone(), req).await
     }

@@ -1,5 +1,5 @@
 use hyper::{Body, Response};
-use nails::error::ErrorResponse;
+use nails::error::NailsError;
 use nails::request::JsonBody;
 use nails::Preroute;
 use serde::{Deserialize, Serialize};
@@ -24,7 +24,7 @@ pub(crate) struct CreateUserResponseBody {}
 pub(crate) async fn create_user(
     _ctx: AppCtx,
     req: CreateUserRequest,
-) -> Result<Response<Body>, ErrorResponse> {
+) -> Result<Response<Body>, NailsError> {
     eprintln!("body = {:?}", req.body);
     let body = CreateUserResponseBody {};
     Ok(super::json_response(&body))

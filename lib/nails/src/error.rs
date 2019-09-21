@@ -17,7 +17,7 @@ pub trait ServiceError: std::error::Error + Any + Send + Sync {
 }
 
 #[derive(Debug)]
-pub enum ErrorResponse {
+pub enum NailsError {
     ContentTypeError(ContentTypeError),
     JsonBodyError(JsonBodyError),
     BodyError(BodyError),
@@ -30,7 +30,7 @@ pub enum ErrorResponse {
     },
 }
 
-impl ErrorResponse {
+impl NailsError {
     // TODO: use Accept header from request
     pub fn to_response(&self) -> Response<Body> {
         Response::builder()
@@ -49,7 +49,7 @@ impl ErrorResponse {
     }
 
     pub fn status(&self) -> StatusCode {
-        use ErrorResponse::*;
+        use NailsError::*;
         match self {
             AnyError { status, .. } => *status,
             ContentTypeError(..) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
@@ -59,7 +59,7 @@ impl ErrorResponse {
     }
 
     pub fn error_code(&self) -> Option<String> {
-        use ErrorResponse::*;
+        use NailsError::*;
         match self {
             AnyError { error_code, .. } => error_code.clone(),
             _ => None,
@@ -67,7 +67,7 @@ impl ErrorResponse {
     }
 
     pub fn public_message(&self) -> Option<String> {
-        use ErrorResponse::*;
+        use NailsError::*;
         match self {
             AnyError { public_message, .. } => public_message.clone(),
             ContentTypeError(e) => Some(e.to_string()),
@@ -78,7 +78,7 @@ impl ErrorResponse {
     }
 
     pub fn error(&self) -> Option<&dyn Fail> {
-        use ErrorResponse::*;
+        use NailsError::*;
         match self {
             AnyError { error, .. } => error.as_ref().map(|x| x.as_fail()),
             ContentTypeError(e) => Some(e),
@@ -89,27 +89,27 @@ impl ErrorResponse {
     }
 }
 
-impl From<ContentTypeError> for ErrorResponse {
+impl From<ContentTypeError> for NailsError {
     fn from(e: ContentTypeError) -> Self {
-        ErrorResponse::ContentTypeError(e)
+        NailsError::ContentTypeError(e)
     }
 }
 
-impl From<JsonBodyError> for ErrorResponse {
+impl From<JsonBodyError> for NailsError {
     fn from(e: JsonBodyError) -> Self {
-        ErrorResponse::JsonBodyError(e)
+        NailsError::JsonBodyError(e)
     }
 }
 
-impl From<QueryError> for ErrorResponse {
+impl From<QueryError> for NailsError {
     fn from(e: QueryError) -> Self {
-        ErrorResponse::QueryError(e)
+        NailsError::QueryError(e)
     }
 }
 
-impl From<BodyError> for ErrorResponse {
+impl From<BodyError> for NailsError {
     fn from(e: BodyError) -> Self {
-        ErrorResponse::BodyError(e)
+        NailsError::BodyError(e)
     }
 }
 

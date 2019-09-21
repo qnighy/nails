@@ -122,7 +122,7 @@ fn derive_preroute2(input: TokenStream) -> syn::Result<TokenStream> {
 
             fn from_request<'a>(
                 req: nails::__rt::Request<nails::__rt::Body>
-            ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+            ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::NailsError>> {
                 nails::__rt::box_future(async move {
                 let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                 let path = req.uri().path();
@@ -319,7 +319,7 @@ mod tests {
                     }
                     fn from_request<'a>(
                         req: nails::__rt::Request<nails::__rt::Body>
-                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::NailsError>> {
                         nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
@@ -383,7 +383,7 @@ mod tests {
                     }
                     fn from_request<'a>(
                         req: nails::__rt::Request<nails::__rt::Body>
-                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::NailsError>> {
                         nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
@@ -441,7 +441,7 @@ mod tests {
                     }
                     fn from_request<'a>(
                         req: nails::__rt::Request<nails::__rt::Body>
-                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::NailsError>> {
                         nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();
@@ -490,7 +490,7 @@ mod tests {
                     }
                     fn from_request<'a>(
                         req: nails::__rt::Request<nails::__rt::Body>
-                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::ErrorResponse>> {
+                    ) -> nails::__rt::BoxFuture<'a, Result<Self, nails::__rt::NailsError>> {
                         nails::__rt::box_future(async move {
                         let query_hash = nails::__rt::parse_query(req.uri().query().unwrap_or(""));
                         let path = req.uri().path();

@@ -1,7 +1,7 @@
 use hyper::{Body, Response};
 use serde::Serialize;
 
-use nails::error::ErrorResponse;
+use nails::error::NailsError;
 use nails::{Preroute, Service};
 
 use crate::context::AppCtx;
@@ -28,7 +28,7 @@ struct IndexRequest {
     a: Vec<String>,
 }
 
-async fn index(_ctx: AppCtx, req: IndexRequest) -> Result<Response<Body>, ErrorResponse> {
+async fn index(_ctx: AppCtx, req: IndexRequest) -> Result<Response<Body>, NailsError> {
     Ok(Response::new(Body::from(format!(
         "Hello, world! {:?}",
         req.a

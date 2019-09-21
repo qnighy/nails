@@ -1,5 +1,5 @@
 use hyper::{Body, Response};
-use nails::error::ErrorResponse;
+use nails::error::NailsError;
 use nails::Preroute;
 use serde::Serialize;
 
@@ -24,7 +24,7 @@ pub(crate) struct Post {
 pub(crate) async fn get_post(
     _ctx: AppCtx,
     _req: GetPostRequest,
-) -> Result<Response<Body>, ErrorResponse> {
+) -> Result<Response<Body>, NailsError> {
     let body = GetPostBody {
         post: Post {
             body: String::from("foo"),

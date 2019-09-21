@@ -8,7 +8,7 @@ use futures::prelude::*;
 use hyper::{Body, Method, Request};
 use serde::de::DeserializeOwned;
 
-use crate::error::{BodyError, ContentTypeError, ErrorResponse, JsonBodyError, QueryError};
+use crate::error::{BodyError, ContentTypeError, JsonBodyError, NailsError, QueryError};
 
 pub use nails_derive::Preroute;
 
@@ -20,12 +20,12 @@ pub trait Preroute: Sized {
     fn match_path(method: &Method, path: &str) -> bool;
 
     // TODO: Request<Body> -> RoutableRequest
-    async fn from_request(req: Request<Body>) -> Result<Self, ErrorResponse>;
+    async fn from_request(req: Request<Body>) -> Result<Self, NailsError>;
 }
 
 #[async_trait]
 pub trait FromBody: Sized {
-    async fn from_body(req: Request<Body>) -> Result<Self, ErrorResponse>;
+    async fn from_body(req: Request<Body>) -> Result<Self, NailsError>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
@@ -36,7 +36,7 @@ impl<T> FromBody for JsonBody<T>
 where
     T: DeserializeOwned,
 {
-    async fn from_body(req: Request<Body>) -> Result<Self, ErrorResponse> {
+    async fn from_body(req: Request<Body>) -> Result<Self, NailsError> {
         if let Some(content_type) = req.headers().get("Content-Type") {
             if content_type != "application/json" {
                 let content_type = String::from_utf8_lossy(content_type.as_bytes()).into_owned();
