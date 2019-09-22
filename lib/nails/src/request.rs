@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use std::slice;
 
 use async_trait::async_trait;
-use futures::compat::Stream01CompatExt;
-use futures::prelude::*;
 use hyper::{Body, Method, Request};
 use serde::de::DeserializeOwned;
 
@@ -53,7 +51,7 @@ where
             }
             .into());
         }
-        let mut body = req.into_body().compat();
+        let mut body = req.into_body();
         let mut buf = Vec::new();
         while let Some(chunk) = body.next().await {
             let chunk = chunk.map_err(BodyError)?;

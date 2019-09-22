@@ -1,29 +1,30 @@
 //! Utilities for using `hyper` with `runtime`.
 
-use futures::compat::Compat;
+use futures::prelude::*;
+
+use super::tokio02_ext::Compat as Tokio02Compat;
+use futures::task::Poll;
 use hyper::Server;
 use runtime::net::{TcpListener, TcpStream};
 use runtime::task::Spawner;
 use std::net::SocketAddr;
+use std::pin::Pin;
 
 #[derive(Debug)]
 pub struct AddrIncoming {
     inner: TcpListener,
 }
 
-impl futures01::Stream for AddrIncoming {
-    type Item = Compat<TcpStream>;
-    type Error = std::io::Error;
+impl Stream for AddrIncoming {
+    type Item = std::io::Result<Tokio02Compat<TcpStream>>;
 
-    fn poll(&mut self) -> futures01::Poll<Option<Self::Item>, Self::Error> {
-        use futures01::Async::*;
-
-        match Compat::new(self.inner.incoming()).poll() {
-            Ok(Ready(Some(stream))) => Ok(Ready(Some(Compat::new(stream)))),
-            Ok(Ready(None)) => Ok(Ready(None)),
-            Ok(NotReady) => Ok(NotReady),
-            Err(e) => Err(e),
-        }
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        Pin::new(&mut self.get_mut().inner.incoming())
+            .poll_next(cx)
+            .map(|x| x.map(|x| x.map(Tokio02Compat)))
     }
 }
 
@@ -39,12 +40,13 @@ pub trait ServerBindExt {
 }
 
 impl ServerBindExt for Server<AddrIncoming, ()> {
-    type Builder = hyper::server::Builder<AddrIncoming, Compat<Spawner>>;
+    type Builder = hyper::server::Builder<AddrIncoming, Tokio02Compat<Spawner>>;
 
     fn bind2(addr: &SocketAddr) -> Self::Builder {
         let incoming = TcpListener::bind(addr).unwrap_or_else(|e| {
             panic!("error binding to {}: {}", addr, e);
         });
-        Server::builder(AddrIncoming { inner: incoming }).executor(Compat::new(Spawner::new()))
+        Server::builder(AddrIncoming { inner: incoming })
+            .executor(Tokio02Compat::new(Spawner::new()))
     }
 }

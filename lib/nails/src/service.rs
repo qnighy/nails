@@ -3,8 +3,8 @@ use futures::prelude::*;
 use std::sync::Arc;
 
 use contextful::Context;
-use futures::compat::Compat;
-use hyper::service::{MakeService, Service as HyperService};
+use futures::task::Poll;
+use hyper::client::service::Service as HyperService;
 use hyper::{Body, Request, Response, StatusCode};
 
 use crate::error::NailsError;
@@ -32,42 +32,48 @@ where
     }
 }
 
-impl<'a, Ctx, HyperCtx> MakeService<HyperCtx> for ServiceWithContext<Ctx>
+impl<'a, Ctx, HyperCtx> HyperService<&'a HyperCtx> for ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
-    type ReqBody = Body;
-    type ResBody = Body;
+    type Response = ServiceWithContext<Ctx>;
     type Error = Box<dyn std::error::Error + Send + Sync>;
-    type Service = ServiceWithContext<Ctx>;
-    type Future = futures01::future::FutureResult<Self::Service, Self::MakeError>;
-    type MakeError = Box<dyn std::error::Error + Send + Sync>;
+    type Future = future::Ready<Result<Self::Response, Self::Error>>;
 
-    fn make_service(&mut self, _ctx: HyperCtx) -> Self::Future {
-        futures01::future::ok(self.clone())
+    fn call(&mut self, _ctx: &HyperCtx) -> Self::Future {
+        future::ok(self.clone())
     }
 
     // TODO: implement poll_ready for better connection throttling
+    fn poll_ready(
+        &mut self,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
 }
 
-impl<'a, Ctx> HyperService for ServiceWithContext<Ctx>
+impl<'a, Ctx> HyperService<Request<Body>> for ServiceWithContext<Ctx>
 where
     Ctx: Context + Send + Sync + 'static,
 {
-    type ReqBody = Body;
-    type ResBody = Body;
+    type Response = Response<Body>;
     type Error = Box<dyn std::error::Error + Send + Sync>;
-    type Future = Compat<future::BoxFuture<'static, Result<Response<Self::ResBody>, Self::Error>>>;
+    type Future = future::BoxFuture<'static, Result<Self::Response, Self::Error>>;
 
-    fn call(&mut self, req: Request<Self::ReqBody>) -> Self::Future {
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
         let inner = self.service.inner.clone();
         let ctx = self.ctx.clone();
-        async move { inner.respond(&ctx, req).await }
-            .boxed()
-            .compat()
+        async move { inner.respond(&ctx, req).await }.boxed()
     }
 
     // TODO: implement poll_ready for better connection throttling
+    fn poll_ready(
+        &mut self,
+        _cx: &mut futures::task::Context<'_>,
+    ) -> Poll<Result<(), Self::Error>> {
+        Poll::Ready(Ok(()))
+    }
 }
 
 #[derive(Debug)]
