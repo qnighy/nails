@@ -37,6 +37,8 @@ pub trait ServerBindExt {
     ///
     /// This method will panic if binding to the address fails.
     fn bind2(addr: &SocketAddr) -> Self::Builder;
+
+    fn bind2_mut(addr: &mut SocketAddr) -> Self::Builder;
 }
 
 impl ServerBindExt for Server<AddrIncoming, ()> {
@@ -46,6 +48,17 @@ impl ServerBindExt for Server<AddrIncoming, ()> {
         let incoming = TcpListener::bind(addr).unwrap_or_else(|e| {
             panic!("error binding to {}: {}", addr, e);
         });
+        Server::builder(AddrIncoming { inner: incoming })
+            .executor(Tokio02Compat::new(Spawner::new()))
+    }
+
+    fn bind2_mut(addr: &mut SocketAddr) -> Self::Builder {
+        let incoming = TcpListener::bind(&*addr).unwrap_or_else(|e| {
+            panic!("error binding to {}: {}", addr, e);
+        });
+        if let Ok(l_addr) = incoming.local_addr() {
+            *addr = l_addr;
+        }
         Server::builder(AddrIncoming { inner: incoming })
             .executor(Tokio02Compat::new(Spawner::new()))
     }

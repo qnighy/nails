@@ -50,9 +50,9 @@ pub(crate) async fn server(ctx: &AppCtx, opt: &ServerCommandOpt) -> failure::Fal
 
     let host: std::net::IpAddr = "127.0.0.1".parse().unwrap();
     let port = opt.port.unwrap_or(3000);
-    let addr = (host, port).into();
+    let mut addr = (host, port).into();
 
-    let server = Server::bind2(&addr).serve(svc.with_context(ctx));
+    let server = Server::bind2_mut(&mut addr).serve(svc.with_context(ctx));
     println!("Listening on {}", addr);
 
     server.await?;
