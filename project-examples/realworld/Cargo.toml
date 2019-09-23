@@ -17,6 +17,9 @@ diesel = { version = "1.4.2", features = ["postgres", "r2d2"] }
 nails = { path = "../../lib/nails" }
 contextful = { path = "../../lib/contextful" }
 
+[dev-dependencies]
+surf = "1.0.2"
+
 [[bin]]
 name = "realworld"
 path = "app/main.rs"
