@@ -5,7 +5,7 @@ use std::sync::Arc;
 use contextful::Context;
 use futures::task::Poll;
 use hyper::client::service::Service as HyperService;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Body, Method, Request, Response, StatusCode};
 
 use crate::error::NailsError;
 use crate::request::Preroute;
@@ -180,6 +180,17 @@ where
         ctx: &Ctx,
         req: Request<Body>,
     ) -> Result<Response<Body>, Box<dyn std::error::Error + Send + Sync>> {
+        if req.method() == Method::OPTIONS && req.headers().get("Origin").is_some() {
+            // CORS hack.
+            // TODO: move this out to middleware
+            return Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .body(Body::empty())
+                .unwrap());
+        }
         let resp = if self.router.match_path(req.method(), req.uri().path()) {
             match self.router.respond(ctx, req).await {
                 Ok(resp) => resp,
