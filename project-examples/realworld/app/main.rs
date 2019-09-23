@@ -11,6 +11,7 @@ mod context;
 mod models;
 mod routes;
 mod schema;
+mod tokens;
 
 #[derive(Debug, Clone, StructOpt)]
 struct CommandOpt {

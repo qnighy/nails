@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::context::AppCtx;
 use crate::models;
+use crate::tokens::{self, Claims};
 
 #[derive(Debug, Preroute)]
 #[nails(path = "/api/users", method = "POST")]
@@ -56,10 +57,18 @@ pub(crate) async fn create_user(
         .get_result::<models::User>(&conn)
         .unwrap(); // TODO: handle errors
 
+    let jwt = tokens::encode(
+        &ctx,
+        &Claims {
+            sub: new_user.id.to_string(),
+            token: new_token,
+        },
+    );
+
     let body = CreateUserResponseBody {
         user: User {
             email: new_user.email.clone(),
-            token: new_user.token.clone(),
+            token: jwt,
             username: new_user.username.clone(),
             bio: new_user.bio.clone().unwrap_or_else(|| String::from("")),
             image: new_user.image.clone().unwrap_or_else(|| String::from("")),

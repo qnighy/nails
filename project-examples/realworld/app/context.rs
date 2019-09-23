@@ -10,6 +10,7 @@ use diesel::r2d2::{ConnectionManager, Pool};
 pub struct AppCtx {
     // TODO: async
     pub db: Pool<ConnectionManager<PgConnection>>,
+    pub secret_key: String,
 }
 
 impl fmt::Debug for AppCtx {
@@ -28,6 +29,9 @@ impl AppCtx {
             .expect(&format!("Error connecting to {}", database_url));
         let db = ConnectionManager::new(database_url);
         let db = Pool::builder().build(db).unwrap();
-        Self { db }
+
+        let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY must be set");
+
+        Self { db, secret_key }
     }
 }
