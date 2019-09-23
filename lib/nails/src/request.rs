@@ -137,11 +137,27 @@ impl FromQuery for String {
     }
 }
 
-impl FromQuery for i32 {
-    fn from_query(values: &[String]) -> Result<Self, QueryError> {
-        Ok(require_one(values)?.parse()?)
-    }
+macro_rules! impl_int_from_query {
+    ($T:ty) => {
+        impl FromQuery for $T {
+            fn from_query(values: &[String]) -> Result<Self, QueryError> {
+                Ok(require_one(values)?.parse()?)
+            }
+        }
+    };
 }
+impl_int_from_query!(i8);
+impl_int_from_query!(i16);
+impl_int_from_query!(i32);
+impl_int_from_query!(i64);
+impl_int_from_query!(i128);
+impl_int_from_query!(isize);
+impl_int_from_query!(u8);
+impl_int_from_query!(u16);
+impl_int_from_query!(u32);
+impl_int_from_query!(u64);
+impl_int_from_query!(u128);
+impl_int_from_query!(usize);
 
 // TODO: rails-like decoding
 // TODO: consider less-allocation way to decode query

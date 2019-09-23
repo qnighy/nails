@@ -18,6 +18,7 @@ pub fn build_route(_ctx: &AppCtx) -> Service<AppCtx> {
         .add_function_route(posts::get_post)
         .add_function_route(tags::list_tags)
         .add_function_route(articles::list_articles)
+        .add_function_route(articles::list_feed_articles)
         .finish()
 }
 
