@@ -1,3 +1,6 @@
+use diesel::prelude::*;
+use rand::prelude::*;
+
 use hyper::{Body, Response};
 use nails::error::NailsError;
 use nails::request::JsonBody;
@@ -5,6 +8,7 @@ use nails::Preroute;
 use serde::{Deserialize, Serialize};
 
 use crate::context::AppCtx;
+use crate::models;
 
 #[derive(Debug, Preroute)]
 #[nails(path = "/api/users", method = "POST")]
@@ -19,14 +23,48 @@ pub(crate) struct CreateUserRequestBody {
 }
 
 #[derive(Debug, Serialize)]
-pub(crate) struct CreateUserResponseBody {}
+pub(crate) struct CreateUserResponseBody {
+    user: User,
+}
 
 pub(crate) async fn create_user(
-    _ctx: AppCtx,
+    ctx: AppCtx,
     req: CreateUserRequest,
 ) -> Result<Response<Body>, NailsError> {
-    eprintln!("body = {:?}", req.body);
-    let body = CreateUserResponseBody {};
+    use crate::schema::users::dsl::*;
+
+    let mut rng = rand::thread_rng();
+    let new_token = {
+        let mut buf = [0; 32];
+        rng.fill_bytes(&mut buf);
+        base64::encode(&buf)
+    };
+    let user = &req.body.0.user;
+
+    // TODO: async
+    let conn = ctx.db.get().unwrap(); // TODO: handle errors
+
+    let new_user = models::NewUser {
+        email: &user.email,
+        token: &new_token,
+        username: &user.username,
+        bio: None,
+        image: None,
+    };
+    let new_user = new_user
+        .insert_into(users)
+        .get_result::<models::User>(&conn)
+        .unwrap(); // TODO: handle errors
+
+    let body = CreateUserResponseBody {
+        user: User {
+            email: new_user.email.clone(),
+            token: new_user.token.clone(),
+            username: new_user.username.clone(),
+            bio: new_user.bio.clone().unwrap_or_else(|| String::from("")),
+            image: new_user.image.clone().unwrap_or_else(|| String::from("")),
+        },
+    };
     Ok(super::json_response(&body))
 }
 
@@ -35,4 +73,13 @@ pub(crate) struct NewUser {
     username: String,
     email: String,
     password: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct User {
+    email: String,
+    token: String,
+    username: String,
+    bio: String,
+    image: String,
 }
