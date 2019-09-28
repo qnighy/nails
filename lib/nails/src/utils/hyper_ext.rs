@@ -5,6 +5,7 @@ use futures::prelude::*;
 use super::tokio02_ext::Compat as Tokio02Compat;
 use futures::task::Poll;
 use hyper::Server;
+use hyper::server::accept::Accept;
 use runtime::net::{TcpListener, TcpStream};
 use runtime::task::Spawner;
 use std::net::SocketAddr;
@@ -15,13 +16,14 @@ pub struct AddrIncoming {
     inner: TcpListener,
 }
 
-impl Stream for AddrIncoming {
-    type Item = std::io::Result<Tokio02Compat<TcpStream>>;
+impl Accept for AddrIncoming {
+    type Conn = Tokio02Compat<TcpStream>;
+    type Error = std::io::Error;
 
-    fn poll_next(
+    fn poll_accept(
         self: Pin<&mut Self>,
         cx: &mut futures::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    ) -> Poll<Option<Result<Self::Conn, Self::Error>>> {
         Pin::new(&mut self.get_mut().inner.incoming())
             .poll_next(cx)
             .map(|x| x.map(|x| x.map(Tokio02Compat)))
