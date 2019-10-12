@@ -11,7 +11,7 @@ synstructure = "0.12.1"
 proc-macro2 = "1.0.1"
 
 [dev-dependencies]
-trybuild = "1.0.11"
+trybuild = "1.0.17"
 
 [features]
 proc_macro_diagnostics = []

@@ -783,7 +783,7 @@ dependencies = [
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "syn 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "synstructure 0.12.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "trybuild 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "trybuild 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1578,7 +1578,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "trybuild"
-version = "1.0.11"
+version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "glob 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2001,7 +2001,7 @@ dependencies = [
 "checksum tower-make 0.3.0-alpha.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ffa9f6bc2a4e4541c0f53aa3a27d571602ebba500b77613ec3bf7753e5a8e036"
 "checksum tower-service 0.3.0-alpha.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7bb202f83c619c74a3f9b5d6d508e9b703be59e86ab49a89adc7eafb1e822b83"
 "checksum try-lock 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e604eb7b43c06650e854be16a2a03155743d3752dd1c943f6829e26b7a36e382"
-"checksum trybuild 1.0.11 (registry+https://github.com/rust-lang/crates.io-index)" = "c718030bb5c88b65994c4200d929d10628d653c7798a35012f8ff4c4211624a8"
+"checksum trybuild 1.0.17 (registry+https://github.com/rust-lang/crates.io-index)" = "e6851bf8351876984fbab8a2391de6378947b898410d8714edd12164d2137127"
 "checksum ucd-util 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "fa9b3b49edd3468c0e6565d85783f51af95212b6fa3986a5500954f00b460874"
 "checksum unicase 2.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2e2e6bd1e59e56598518beb94fd6db628ded570326f0a98c679a304bd9f00150"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
