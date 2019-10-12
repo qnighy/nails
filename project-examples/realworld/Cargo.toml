@@ -15,7 +15,7 @@ futures-preview = { version = "=0.3.0-alpha.18", features = ["compat"] }
 hyper = { version = "=0.13.0-alpha.2", default-features = false }
 runtime = "=0.3.0-alpha.7"
 structopt = "0.3.2"
-diesel = { version = "1.4.2", features = ["postgres", "r2d2"] }
+diesel = { version = "1.4.3", features = ["postgres", "r2d2"] }
 jwt = { package = "jsonwebtoken", version = "6.0.1" }
 nails = { path = "../../lib/nails" }
 contextful = { path = "../../lib/contextful" }
