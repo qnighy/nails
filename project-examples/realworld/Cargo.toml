@@ -19,6 +19,7 @@ diesel = { version = "1.4.3", features = ["postgres", "r2d2"] }
 jwt = { package = "jsonwebtoken", version = "6.0.1" }
 nails = { path = "../../lib/nails" }
 contextful = { path = "../../lib/contextful" }
+derivative = "1.0.3"
 
 [dev-dependencies]
 surf = "1.0.2"

@@ -1,22 +1,19 @@
 use std::env;
-use std::fmt;
 
 use contextful::Context;
+use derivative::Derivative;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
 
-#[derive(Clone)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug)]
 pub struct AppCtx {
     // TODO: async
+    #[derivative(Debug = "ignore")]
     pub db: Pool<ConnectionManager<PgConnection>>,
+    #[derivative(Debug = "ignore")]
     pub secret_key: String,
-}
-
-impl fmt::Debug for AppCtx {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("AppCtx").field("db", &()).finish()
-    }
 }
 
 impl Context for AppCtx {}
