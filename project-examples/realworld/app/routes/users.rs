@@ -80,10 +80,7 @@ pub(crate) struct LoginResponseBody {
     user: User,
 }
 
-pub(crate) async fn login(
-    ctx: AppCtx,
-    req: LoginRequest,
-) -> Result<Response<Body>, NailsError> {
+pub(crate) async fn login(ctx: AppCtx, req: LoginRequest) -> Result<Response<Body>, NailsError> {
     use crate::schema::users::dsl::*;
 
     let login_user = &req.body.0.user;
@@ -92,7 +89,10 @@ pub(crate) async fn login(
     let conn = ctx.db.get().unwrap(); // TODO: handle errors
 
     // TODO: handle errors
-    let found_user = users.filter(email.eq(&login_user.email)).first::<models::User>(&conn).unwrap();
+    let found_user = users
+        .filter(email.eq(&login_user.email))
+        .first::<models::User>(&conn)
+        .unwrap();
 
     // TODO: check password
 

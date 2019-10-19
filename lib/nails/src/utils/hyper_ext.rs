@@ -4,8 +4,8 @@ use futures::prelude::*;
 
 use super::tokio02_ext::Compat as Tokio02Compat;
 use futures::task::Poll;
-use hyper::Server;
 use hyper::server::accept::Accept;
+use hyper::Server;
 use runtime::net::{TcpListener, TcpStream};
 use runtime::task::Spawner;
 use std::net::SocketAddr;
