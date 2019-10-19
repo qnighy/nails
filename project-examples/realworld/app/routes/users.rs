@@ -57,22 +57,8 @@ pub(crate) async fn create_user(
         .get_result::<models::User>(&conn)
         .unwrap(); // TODO: handle errors
 
-    let jwt = tokens::encode(
-        &ctx,
-        &Claims {
-            sub: new_user.id.to_string(),
-            token: new_token,
-        },
-    );
-
     let body = CreateUserResponseBody {
-        user: User {
-            email: new_user.email.clone(),
-            token: jwt,
-            username: new_user.username.clone(),
-            bio: new_user.bio.clone().unwrap_or_else(|| String::from("")),
-            image: new_user.image.clone().unwrap_or_else(|| String::from("")),
-        },
+        user: User::from_model(&ctx, new_user),
     };
     Ok(super::json_response(&body))
 }
@@ -110,22 +96,8 @@ pub(crate) async fn login(
 
     // TODO: check password
 
-    let jwt = tokens::encode(
-        &ctx,
-        &Claims {
-            sub: found_user.id.to_string(),
-            token: found_user.token.clone(),
-        },
-    );
-
     let body = LoginResponseBody {
-        user: User {
-            email: found_user.email.clone(),
-            token: jwt,
-            username: found_user.username.clone(),
-            bio: found_user.bio.clone().unwrap_or_else(|| String::from("")),
-            image: found_user.image.clone().unwrap_or_else(|| String::from("")),
-        },
+        user: User::from_model(&ctx, found_user),
     };
     Ok(super::json_response(&body))
 }
@@ -150,4 +122,23 @@ pub(crate) struct User {
     username: String,
     bio: String,
     image: String,
+}
+
+impl User {
+    fn from_model(ctx: &AppCtx, user: models::User) -> Self {
+        let jwt = tokens::encode(
+            ctx,
+            &Claims {
+                sub: user.id.to_string(),
+                token: user.token,
+            },
+        );
+        Self {
+            email: user.email,
+            token: jwt,
+            username: user.username,
+            bio: user.bio.unwrap_or_else(String::default),
+            image: user.image.unwrap_or_else(String::default),
+        }
+    }
 }
