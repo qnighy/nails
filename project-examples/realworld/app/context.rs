@@ -1,4 +1,5 @@
 use std::env;
+use std::sync::Arc;
 
 use contextful::Context;
 use derivative::Derivative;
@@ -8,12 +9,22 @@ use diesel::r2d2::{ConnectionManager, Pool};
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
-pub struct AppCtx {
+pub struct AppCtxInner {
     // TODO: async
     #[derivative(Debug = "ignore")]
     pub db: Pool<ConnectionManager<PgConnection>>,
     #[derivative(Debug = "ignore")]
     pub secret_key: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct AppCtx(pub Arc<AppCtxInner>);
+
+impl std::ops::Deref for AppCtx {
+    type Target = AppCtxInner;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
 impl Context for AppCtx {}
@@ -29,6 +40,6 @@ impl AppCtx {
 
         let secret_key = env::var("SECRET_KEY").expect("SECRET_KEY must be set");
 
-        Self { db, secret_key }
+        Self(Arc::new(AppCtxInner { db, secret_key }))
     }
 }
