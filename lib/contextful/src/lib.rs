@@ -2,6 +2,8 @@ use std::borrow::Cow;
 
 pub trait Context: std::fmt::Debug + Clone {}
 
+impl Context for () {}
+
 pub trait AsContext<U: Context>: Context {
     fn as_context(&self) -> Cow<'_, U>;
 }
